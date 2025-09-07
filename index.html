@@ -17,6 +17,33 @@
             align-items: center;
             min-height: 100vh;
         }
+        .app-header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+        .app-header h2 {
+            color: #0f172a;
+            font-size: 20px;
+            margin: 0;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-info span {
+            font-weight: 500;
+            color: #334155;
+        }
         .form-container, .records-container {
             background: linear-gradient(180deg, #ffffff, #f1f5f9);
             max-width: 1200px;
@@ -107,10 +134,6 @@
             background-color: #dc2626;
             transform: translateY(-2px);
         }
-        .button-danger:disabled {
-            background-color: #fca5a5;
-            cursor: not-allowed;
-        }
         .button-secondary {
             background-color: #f1f5f9;
             color: #0f172a;
@@ -118,18 +141,6 @@
         .button-secondary:hover {
             background-color: #cbd5e1;
             transform: translateY(-2px);
-        }
-        .button-ghost {
-            background: none;
-            border: none;
-            color: #2563eb;
-            padding: 0;
-            text-align: left;
-            font-weight: 500;
-        }
-        .button-ghost:hover {
-            color: #1e40af;
-            text-decoration: underline;
         }
         .ghost-delete svg {
             width: 22px;
@@ -159,7 +170,7 @@
             opacity: 1;
         }
         .notification.error {
-            background-color: #ef4444;
+            background-color: #ffffff;
         }
         .factura-details {
             margin-top: 10px;
@@ -299,32 +310,6 @@
             margin-top: -10px;
             margin-bottom: 10px;
             display: none;
-        }
-        .app-header {
-            width: 100%;
-            max-width: 1200px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #fff;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            box-sizing: border-box;
-        }
-        .app-header h2 {
-            color: #0f172a;
-            font-size: 20px;
-            margin: 0;
-        }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .user-info span {
-            font-weight: 500;
-            color: #334155;
         }
     </style>
 </head>
@@ -503,42 +488,31 @@
 
     <script>
         const webAppUrl = "<?!= url ?>";
+        const sessionToken = "<?!= token ?>";
 
         const clientCache = {
             TTL: 3600 * 1000,
             PREFIX: 'formCobranza_',
             set(key, data) {
-                try {
-                    localStorage.setItem(this.PREFIX + key, JSON.stringify({ timestamp: new Date().getTime(), data }));
-                } catch (e) {
-                    console.error("Error guardando en localStorage", e);
-                }
+                try { localStorage.setItem(this.PREFIX + key, JSON.stringify({ timestamp: new Date().getTime(), data })); } catch (e) { console.error("Error guardando en localStorage", e); }
             },
             get(key) {
                 try {
                     const itemStr = localStorage.getItem(this.PREFIX + key);
                     if (!itemStr) return null;
                     const item = JSON.parse(itemStr);
-                    const isExpired = (new Date().getTime() - item.timestamp) > this.TTL;
-                    if (isExpired) {
+                    if ((new Date().getTime() - item.timestamp) > this.TTL) {
                         localStorage.removeItem(this.PREFIX + key);
                         return null;
                     }
                     return item.data;
-                } catch (e) {
-                    console.error("Error leyendo de localStorage", e);
-                    return null;
-                }
+                } catch (e) { console.error("Error leyendo de localStorage", e); return null; }
             },
             clear() {
                 try {
-                    Object.keys(localStorage).forEach(key => {
-                        if (key.startsWith(this.PREFIX)) localStorage.removeItem(key);
-                    });
+                    Object.keys(localStorage).forEach(key => { if (key.startsWith(this.PREFIX)) localStorage.removeItem(key); });
                     console.log("Caché de la aplicación limpiado.");
-                } catch (e) {
-                    console.error("Error limpiando localStorage", e);
-                }
+                } catch (e) { console.error("Error limpiando localStorage", e); }
             }
         };
 
@@ -625,14 +599,16 @@
                 this.currentVendedor = null;
                 this.registroToDelete = null;
             }
-            
             async loadInitialData(forceRefresh = false) {
+                this.ui.toggleLoading(true);
+                if (forceRefresh) {
+                    clientCache.clear();
+                }
                 try {
-                    this.ui.toggleLoading(true);
                     await Promise.all([
                         this.loadVendedores(forceRefresh),
-                        this.loadBcvRate(),
-                        this.loadRecords()
+                        this.loadBcvRate(forceRefresh),
+                        this.loadRecords(this.currentVendedor, forceRefresh)
                     ]);
                 } catch (error) {
                     this.ui.showNotification(`Error al cargar datos iniciales: ${error.message}`, 'error');
@@ -640,51 +616,41 @@
                     this.ui.toggleLoading(false);
                 }
             }
-
             async loadVendedores(forceRefresh = false) {
                 const cacheKey = 'vendedores';
                 let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
-
                 if (cachedData) {
                     this.ui.populateSelect(this.ui.elements.vendedorSelect, cachedData, 'Seleccione un vendedor');
-                    // Si solo hay una opción (además del placeholder), la seleccionamos
                     if (this.ui.elements.vendedorSelect.options.length === 2) {
                         this.ui.elements.vendedorSelect.selectedIndex = 1;
                         this.ui.elements.vendedorSelect.dispatchEvent(new Event('change'));
                     }
                     return;
                 }
-                
                 this.ui.elements.vendedorSelect.innerHTML = '<option disabled selected>Cargando...</option>';
                 this.ui.elements.vendedorSelect.disabled = true;
-
                 try {
                     const options = await new Promise((resolve, reject) => {
                         google.script.run
                             .withSuccessHandler(resolve)
                             .withFailureHandler(reject)
-                            .loadVendedores(forceRefresh);
+                            .loadVendedores(sessionToken, forceRefresh);
                     });
-
                     clientCache.set(cacheKey, options);
                     this.ui.populateSelect(this.ui.elements.vendedorSelect, options, 'Seleccione un vendedor');
-                    
-                    // Si el usuario solo tiene un código de vendedor, lo seleccionamos por defecto.
                     if (this.ui.elements.vendedorSelect.options.length === 2) {
                         this.ui.elements.vendedorSelect.selectedIndex = 1;
                         this.ui.elements.vendedorSelect.dispatchEvent(new Event('change'));
                     }
-
                 } catch (error) {
                     this.ui.elements.vendedorSelect.innerHTML = `<option disabled>Error al cargar</option>`;
                     this.ui.showNotification(`Error al cargar vendedores: ${error.message}`, 'error');
                 }
             }
-
             async loadClientes() {
                 const vendedor = this.ui.elements.vendedorSelect.value;
                 this.currentVendedor = vendedor;
-                if (!vendedor) { // Simplificado: si no hay vendedor, no hacer nada. El caso "Mostrar todos" se maneja en loadRecords.
+                if (!vendedor || vendedor === 'Mostrar todos') {
                     this.ui.elements.clienteSelect.innerHTML = '<option disabled selected>Seleccione un cliente</option>';
                     this.ui.elements.clienteSelect.disabled = true;
                     this.ui.elements.facturaSelect.innerHTML = '<option disabled selected>Seleccione una factura</option>';
@@ -706,7 +672,7 @@
                         google.script.run
                             .withSuccessHandler(resolve)
                             .withFailureHandler(reject)
-                            .cargarClientesEnPregunta1(vendedor);
+                            .cargarClientesEnPregunta1(sessionToken, vendedor);
                     });
                     clientCache.set(cacheKey, options);
                     this.ui.populateSelect(this.ui.elements.clienteSelect, options, 'Seleccione un cliente');
@@ -717,7 +683,6 @@
                     this.ui.toggleLoading(false);
                 }
             }
-
             async loadFacturas() {
                 const cliente = this.ui.elements.clienteSelect.value;
                 const vendedor = this.ui.elements.vendedorSelect.value;
@@ -742,7 +707,7 @@
                         google.script.run
                             .withSuccessHandler(resolve)
                             .withFailureHandler(reject)
-                            .obtenerFacturas(vendedor, cliente);
+                            .obtenerFacturas(sessionToken, vendedor, cliente);
                     });
                     clientCache.set(cacheKey, facturas);
                     this.facturasPendientes = facturas;
@@ -754,14 +719,12 @@
                     this.ui.toggleLoading(false);
                 }
             }
-
             populateFacturasSelect() {
                 const optionsHtml = this.facturasPendientes.length === 0
                     ? '<option disabled>No hay facturas pendientes</option>'
                     : this.facturasPendientes.map(f => `<option value="${f.documento}">${f.documento}</option>`).join('');
                 this.ui.populateSelect(this.ui.elements.facturaSelect, optionsHtml, 'Seleccione una factura');
             }
-
             showFacturaDetails() {
                 const documento = this.ui.elements.facturaSelect.value;
                 const factura = this.facturasPendientes.find(f => f.documento === documento);
@@ -769,38 +732,49 @@
                     this.ui.showFacturaDetails(factura);
                 }
             }
-
-            async loadBcvRate() {
+            async loadBcvRate(forceRefresh = false) {
+                const cacheKey = 'bcvRate';
+                let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
+                if (cachedData) {
+                    this.ui.updateBcvRate(cachedData);
+                    return;
+                }
                 try {
                     const rate = await new Promise((resolve, reject) => {
                         google.script.run
                             .withSuccessHandler(resolve)
                             .withFailureHandler(reject)
-                            .obtenerTasaBCV();
+                            .obtenerTasaBCV(sessionToken);
                     });
+                    clientCache.set(cacheKey, rate);
                     this.ui.updateBcvRate(rate);
                 } catch (error) {
                     this.ui.updateBcvRate(null);
                     this.ui.showNotification(`Error al cargar tasa BCV: ${error.message}`, 'error');
                 }
             }
-
-            async loadRecords(vendedor = this.currentVendedor) {
+            async loadRecords(vendedor = this.currentVendedor, forceRefresh = false) {
+                const cacheKey = `records_${vendedor || 'all'}`;
+                let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
+                if (cachedData) {
+                    this.ui.updateRecordsTable(cachedData);
+                    return;
+                }
                 this.ui.elements.recordsStatus.textContent = 'Cargando registros...';
                 try {
                     const registros = await new Promise((resolve, reject) => {
                         google.script.run
                             .withSuccessHandler(resolve)
                             .withFailureHandler(reject)
-                            .obtenerRegistrosEnviados(vendedor);
+                            .obtenerRegistrosEnviados(sessionToken, vendedor);
                     });
+                    clientCache.set(cacheKey, registros);
                     this.ui.updateRecordsTable(registros);
                 } catch (error) {
                     this.ui.elements.recordsStatus.textContent = `Error al cargar registros: ${error.message}`;
                     this.ui.showNotification(`Error al cargar registros: ${error.message}`, 'error');
                 }
             }
-
             async submitForm() {
                 if (!this.validarFormulario()) {
                     this.ui.showNotification('Por favor, corrija los errores en el formulario.', 'error');
@@ -815,18 +789,17 @@
                         google.script.run
                             .withSuccessHandler(resolve)
                             .withFailureHandler(reject)
-                            .enviarDatos(data);
+                            .enviarDatos(sessionToken, data);
                     });
                     this.ui.showNotification(response, 'success');
                     this.ui.resetForm();
-                    await this.loadRecords();
+                    await this.loadRecords(this.currentVendedor, true); // Forzar refresco de registros
                 } catch (error) {
                     this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
                 } finally {
                     this.ui.toggleLoading(false);
                 }
             }
-
             async deleteRecord() {
                 this.ui.hideDeleteModal();
                 if (this.registroToDelete) {
@@ -836,10 +809,10 @@
                             google.script.run
                                 .withSuccessHandler(resolve)
                                 .withFailureHandler(reject)
-                                .eliminarRegistro(this.registroToDelete);
+                                .eliminarRegistro(sessionToken, this.registroToDelete);
                         });
                         this.ui.showNotification(response, 'success');
-                        await this.loadRecords();
+                        await this.loadRecords(this.currentVendedor, true); // Forzar refresco de registros
                     } catch (error) {
                         this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
                     } finally {
@@ -847,24 +820,12 @@
                     }
                 }
             }
-
             setRegistroToDelete(rowIndex) {
                 this.registroToDelete = rowIndex;
             }
-
             clearClientCacheAndReload() {
-                clientCache.clear();
                 this.loadInitialData(true);
-                google.script.run
-                    .withSuccessHandler(() => {
-                        console.log('Propiedades del script limpiadas.');
-                    })
-                    .withFailureHandler(error => {
-                        this.ui.showNotification(`Error al limpiar propiedades: ${error.message}`, 'error');
-                    })
-                    .clearScriptProperties();
             }
-
             validarFormulario() {
                 let isValid = true;
                 const fields = [
@@ -893,16 +854,19 @@
             }
         }
 
+        // Inicialización y eventos
         const uiManager = new UiManager();
         const dataManager = new DataManager(uiManager);
 
         document.addEventListener('DOMContentLoaded', () => {
-            // **CAMBIO CLAVE**: Se fuerza la actualización de datos en cada carga de la página.
-            dataManager.loadInitialData(true);
+            const urlParams = new URLSearchParams(window.location.search);
+            const isNewSession = urlParams.get('new_session') === 'true';
+
+            dataManager.loadInitialData(isNewSession);
 
             uiManager.elements.vendedorSelect.addEventListener('change', () => {
                 dataManager.loadClientes();
-                dataManager.loadRecords(uiManager.elements.vendedorSelect.value);
+                dataManager.loadRecords(uiManager.elements.vendedorSelect.value, true);
             });
             uiManager.elements.clienteSelect.addEventListener('change', () => dataManager.loadFacturas());
             uiManager.elements.facturaSelect.addEventListener('change', () => dataManager.showFacturaDetails());
@@ -922,18 +886,24 @@
                 uiManager.showNotification('Datos actualizados.', 'success');
             });
             uiManager.elements.confirmDeleteBtn.addEventListener('click', () => dataManager.deleteRecord());
+            // *** CORRECCIÓN DEL ERROR ***
+            // Se cambió la variable 'ui' por la correcta 'uiManager'
             uiManager.elements.cancelDeleteBtn.addEventListener('click', () => uiManager.hideDeleteModal());
+            
             window.onclick = (event) => {
                 if (event.target == uiManager.elements.deleteModal) {
                     uiManager.hideDeleteModal();
                 }
             };
-
             uiManager.elements.logoutButton.addEventListener('click', () => {
                 uiManager.elements.logoutButton.disabled = true;
                 uiManager.elements.logoutButton.textContent = 'Cerrando...';
+                
+                const tokenToInvalidate = sessionStorage.getItem('sessionToken') || sessionToken;
+                
                 google.script.run
                     .withSuccessHandler(() => {
+                        sessionStorage.removeItem('sessionToken');
                         window.top.location.href = webAppUrl;
                     })
                     .withFailureHandler((error) => {
@@ -941,7 +911,7 @@
                         uiManager.elements.logoutButton.disabled = false;
                         uiManager.elements.logoutButton.textContent = 'Cerrar Sesión';
                     })
-                    .logoutUser();
+                    .logoutUser(tokenToInvalidate);
             });
         });
     </script>

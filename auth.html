@@ -17,48 +17,92 @@
             align-items: center;
             min-height: 100vh;
         }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
         .auth-container {
             background: linear-gradient(180deg, #ffffff, #f1f5f9);
             max-width: 400px;
             width: 100%;
-            padding: 28px;
+            padding: 32px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
-        .auth-container:hover {
-            transform: translateY(-2px);
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px; /* Espacio entre los logos */
+            margin-bottom: 24px;
+            height: 70px;
+        }
+        .logo-container img {
+            max-height: 100%;
+            width: auto;
+            object-fit: contain;
+        }
+        .form-wrapper {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .form-wrapper.hidden {
+            opacity: 0;
+            transform: scale(0.98);
+            position: absolute;
+            pointer-events: none;
         }
         h2 {
             text-align: center;
             color: #0f172a;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             font-weight: 600;
+        }
+        .input-group {
+            margin-bottom: 20px;
         }
         label {
             display: block;
-            margin-bottom: 10px;
-            color: #0f172a;
+            margin-bottom: 8px;
+            color: #334155;
             font-weight: 500;
-            font-size: 15px;
+            font-size: 14px;
+        }
+        .input-container {
+            position: relative;
         }
         input {
             width: 100%;
             padding: 14px;
+            padding-right: 45px;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             box-sizing: border-box;
             font-size: 16px;
             background-color: #ffffff;
             transition: border-color 0.3s, box-shadow 0.3s;
-            margin-bottom: 20px;
         }
         input:focus {
             outline: none;
             border-color: #2563eb;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #64748b;
+        }
+        .password-toggle:hover {
+            color: #1e40af;
+        }
         .button {
+            position: relative;
             padding: 14px;
             border: none;
             border-radius: 6px;
@@ -72,232 +116,264 @@
         }
         .button:hover {
             background-color: #1e40af;
-            transform: translateY(-2px);
         }
         .button:disabled {
             background-color: #94a3b8;
             cursor: not-allowed;
         }
-        p {
-            text-align: center;
-            color: #2563eb;
-            cursor: pointer;
-            margin-top: 20px;
-            font-weight: 500;
+        .button .button-text {
+            transition: opacity 0.2s;
         }
-        p:hover {
-            text-decoration: underline;
-            color: #1e40af;
-        }
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #10b981;
-            color: #ffffff;
-            padding: 16px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-            transform: translateY(-100px);
-            opacity: 0;
+        .button .spinner {
             display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin-top: -12px;
+            margin-left: -12px;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        .notification.visible {
-            transform: translateY(0);
-            opacity: 1;
+        .button.loading .spinner {
             display: block;
         }
-        .notification.error {
-            background-color: #ef4444;
+        .button.loading .button-text {
+            opacity: 0;
         }
-        #register-form {
-            display: none;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        .error {
-            color: #ef4444;
+        .switch-form-text {
+            text-align: center;
+            margin-top: 24px;
+        }
+        .switch-form-text a {
+            color: #2563eb;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        .switch-form-text a:hover {
+            text-decoration: underline;
+        }
+        .notification {
+            position: fixed; top: 20px; right: 20px; background-color: #10b981; color: #ffffff; padding: 16px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; display: none; opacity: 0; transition: opacity 0.3s, transform 0.3s;
+        }
+        .notification.visible { display: block; opacity: 1; }
+        .notification.error { background-color: #d97706; }
+        .error { color: #ef4444; font-size: 14px; margin-top: 5px; display: none; }
+        .chrome-branding {
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #64748b;
             font-size: 14px;
-            margin-top: -10px;
-            margin-bottom: 10px;
-            display: none;
         }
-        @media screen and (max-width: 768px) {
-            .auth-container {
-                padding: 20px;
-            }
-            input, .button {
-                font-size: 14px;
-            }
+        .chrome-branding svg {
+            width: 20px;
+            height: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="auth-container">
-        <h2>Inicio de Sesión</h2>
-        <form id="login-form">
-            <label for="email">Correo Electrónico:</label>
-            <input type="email" id="email" required>
-            <span id="emailError" class="error">Por favor, ingrese un correo válido.</span>
-            <label for="password">Contraseña:</label>
-            <input type="password" id="password" required>
-            <span id="passwordError" class="error">La contraseña no puede estar vacía.</span>
-            <button type="submit" class="button">Ingresar</button>
-        </form>
-        <p onclick="showRegister()">¿No tienes cuenta? Regístrate aquí.</p>
-        <form id="register-form">
-            <label for="reg-email">Correo Electrónico:</label>
-            <input type="email" id="reg-email" required>
-            <span id="regEmailError" class="error">Por favor, ingrese un correo válido.</span>
-            <label for="reg-password">Contraseña:</label>
-            <input type="password" id="reg-password" required>
-            <span id="regPasswordError" class="error">La contraseña debe tener al menos 6 caracteres.</span>
-            <label for="reg-name">Nombre:</label>
-            <input type="text" id="reg-name" required>
-            <span id="regNameError" class="error">El nombre no puede estar vacío.</span>
-            <button type="submit" class="button">Registrar</button>
-        </form>
-        <p onclick="showLogin()">¿Ya tienes cuenta? Inicia sesión aquí.</p>
-        <div id="notification" class="notification"></div>
+    <div class="main-container">
+        <div class="auth-container">
+            <div class="logo-container">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAAM+CAYAAADd8erjAAAAAXNSR0IArs4c6QAAIABJREFUeJzs3X+wXVV55/t/39f99u17s3u3u+17s3vSbrbbKjY2YGFjY6sY2FhYwBg2thlYwTY2thlY29gG29g2thlswTY2YGFjY2NjY2NjY2MD29gGNmBjA9vYwAY2sIEtbGMDG9jABv5/sPfe8/v4vO/z/Dzv8/y+r/v9vj/4A/S5Xy/f5+v+vs/X/X7f1/2+r/t9X/f7vu73fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u6" alt="Conciliapp Logo">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABDgAAASwCAYAAAD9gBlIAAAAAXNSR0IArs4c6QAAIABJREFUeJzs3X+gXVV55/t/39f99u17s3u3u+17s3vSbrbbKjY2YGFjY6sY2FhYwBg2thlYwTY2thlY29gG29g2thlswTY2YGFjY2NjY2NjY2MD29gGNmBjA9vYwAY2sIEtbGMDG9jABv5/sPfe8/v4vO/z/Dzv8/y+r/v9vj/4A/S5Xy/f5+v+vs/X/X7f1/2+r/t9X/f7vu73fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+39f9vq/7fV/3+77u933d7/u63/d1v+/rfh/5N2C/Lur3fd3v+7rf93W/7+t+3" alt="Comercial Tin-tito Logo">
+            </div>
+            <div id="login-form-wrapper" class="form-wrapper">
+                <h2>Inicio de Sesión</h2>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="email">Correo Electrónico:</label>
+                        <input type="email" id="email" required>
+                        <span id="emailError" class="error">Por favor, ingrese un correo válido.</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Contraseña:</label>
+                        <div class="input-container">
+                            <input type="password" id="password" required>
+                            <span class="password-toggle" onclick="togglePasswordVisibility('password', this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </span>
+                        </div>
+                        <span id="passwordError" class="error">La contraseña no puede estar vacía.</span>
+                    </div>
+                    <button type="submit" class="button">
+                        <span class="button-text">Ingresar</span>
+                        <div class="spinner"></div>
+                    </button>
+                </form>
+                <p class="switch-form-text">¿No tienes cuenta? <a onclick="switchForm('register')">Regístrate aquí.</a></p>
+            </div>
+            <div id="register-form-wrapper" class="form-wrapper hidden">
+                <h2>Crear Cuenta</h2>
+                <form id="register-form">
+                    <div class="input-group">
+                        <label for="reg-name">Nombre:</label>
+                        <input type="text" id="reg-name" required>
+                        <span id="regNameError" class="error">El nombre no puede estar vacío.</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-email">Correo Electrónico:</label>
+                        <input type="email" id="reg-email" required>
+                        <span id="regEmailError" class="error">Por favor, ingrese un correo válido.</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="reg-password">Contraseña:</label>
+                        <div class="input-container">
+                            <input type="password" id="reg-password" required>
+                             <span class="password-toggle" onclick="togglePasswordVisibility('reg-password', this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </span>
+                        </div>
+                        <span id="regPasswordError" class="error">La contraseña debe tener al menos 6 caracteres.</span>
+                    </div>
+                    <button type="submit" class="button">
+                        <span class="button-text">Registrar</span>
+                        <div class="spinner"></div>
+                    </button>
+                </form>
+                <p class="switch-form-text">¿Ya tienes cuenta? <a onclick="switchForm('login')">Inicia sesión aquí.</a></p>
+            </div>
+        </div>
+        <div class="chrome-branding">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.1 12C20.1 8.22 17.51 5.1 14.06 4.25L14.05 4.25C13.3 4.07 12.5 4 11.69 4C7.3 4 3.69 7.61 3.69 12C3.69 16.39 7.3 20 11.69 20C15.54 20 18.89 17.26 19.82 13.53H11.69V12H20.1Z" fill="#4285F4"></path><path d="M11.69 4C9.53 4 7.58 4.9 6.16 6.39L8.63 8.86C9.43 8.06 10.51 7.59 11.69 7.59C13.56 7.59 15.11 8.94 15.42 10.71H11.69V7.59V4Z" fill="#34A853"></path><path d="M19.82 13.53C19.26 15.52 17.68 17.06 15.69 17.6L13.19 15.1C14.28 14.59 15.06 13.56 15.22 12.31H19.82V13.53Z" fill="#FBBC05"></path><path d="M3.8 12.21C3.8 11.4 3.93 10.63 4.16 9.9L1.66 7.9C0.96 9.17 0.69 10.56 0.69 12C0.69 15.89 3.19 19.21 6.51 20.39L8.96 17.94C5.92 17.15 3.8 14.9 3.8 12.21Z" fill="#EA4335"></path></svg>
+            <span>Powered by Google Chrome</span>
+        </div>
     </div>
+    
+    <div id="notification" class="notification"></div>
+    
     <script>
         const webAppUrl = "<?!= url ?>";
+        const loginWrapper = document.getElementById('login-form-wrapper');
+        const registerWrapper = document.getElementById('register-form-wrapper');
+
+        function switchForm(to) {
+            const formToHide = (to === 'register') ? loginWrapper : registerWrapper;
+            const formToShow = (to === 'register') ? registerWrapper : loginWrapper;
+            
+            formToHide.classList.add('hidden');
+            formToShow.style.position = 'relative';
+            formToHide.style.position = 'absolute';
+            
+            setTimeout(() => {
+                formToShow.classList.remove('hidden');
+            }, 10);
+        }
+
+        function togglePasswordVisibility(inputId, icon) {
+            const input = document.getElementById(inputId);
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            icon.innerHTML = isPassword 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        }
 
         function showNotification(message, type = 'success') {
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.className = `notification ${type} visible`;
-            setTimeout(() => {
-                notification.classList.remove('visible');
-                notification.style.display = 'none';
-            }, 3000);
+            setTimeout(() => { notification.classList.remove('visible'); }, 4000);
         }
 
-        function showRegister() {
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('register-form').style.display = 'block';
-            document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
-        }
-
-        function showLogin() {
-            document.getElementById('register-form').style.display = 'none';
-            document.getElementById('login-form').style.display = 'block';
-            document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
-        }
-
-        function validateLoginForm() {
+        function validateForm(formId) {
             let isValid = true;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const emailError = document.getElementById('emailError');
-            const passwordError = document.getElementById('passwordError');
+            document.querySelectorAll(`#${formId} .error`).forEach(el => el.style.display = 'none');
 
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                emailError.style.display = 'block';
+            const emailInput = document.getElementById(formId === 'login-form' ? 'email' : 'reg-email');
+            if (!emailInput.value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)) {
+                document.getElementById(emailInput.id + 'Error').style.display = 'block';
                 isValid = false;
-            } else {
-                emailError.style.display = 'none';
             }
-            if (!password) {
-                passwordError.style.display = 'block';
+            
+            const passwordInput = document.getElementById(formId === 'login-form' ? 'password' : 'reg-password');
+            const passwordMinLength = (formId === 'login-form') ? 1 : 6;
+            if (!passwordInput.value || passwordInput.value.length < passwordMinLength) {
+                document.getElementById(passwordInput.id + 'Error').style.display = 'block';
                 isValid = false;
-            } else {
-                passwordError.style.display = 'none';
             }
-            return isValid;
-        }
 
-        function validateRegisterForm() {
-            let isValid = true;
-            const email = document.getElementById('reg-email').value;
-            const password = document.getElementById('reg-password').value;
-            const name = document.getElementById('reg-name').value;
-            const emailError = document.getElementById('regEmailError');
-            const passwordError = document.getElementById('regPasswordError');
-            const nameError = document.getElementById('regNameError');
-
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                emailError.style.display = 'block';
-                isValid = false;
-            } else {
-                emailError.style.display = 'none';
-            }
-            if (!password || password.length < 6) {
-                passwordError.style.display = 'block';
-                isValid = false;
-            } else {
-                passwordError.style.display = 'none';
-            }
-            if (!name.trim()) {
-                nameError.style.display = 'block';
-                isValid = false;
-            } else {
-                nameError.style.display = 'none';
+            if (formId === 'register-form') {
+                const nameInput = document.getElementById('reg-name');
+                if (!nameInput.value.trim()) {
+                    document.getElementById('regNameError').style.display = 'block';
+                    isValid = false;
+                }
             }
             return isValid;
         }
 
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            if (!validateLoginForm()) {
-                showNotification('Por favor, corrija los errores en el formulario.', 'error');
-                return;
-            }
+            if (!validateForm('login-form')) return;
+            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const button = e.target.querySelector('button');
+            
+            button.classList.add('loading');
             button.disabled = true;
-            button.textContent = 'Ingresando...';
 
             google.script.run
                 .withSuccessHandler((response) => {
                     if (response && response.status === 'SUCCESS' && response.token) {
-                        // Guardamos el token en sessionStorage para esta sesión del navegador
                         sessionStorage.setItem('sessionToken', response.token);
                         showNotification('Inicio de sesión exitoso. Redirigiendo...', 'success');
-                        // Redirigimos a la URL principal, pasando el token como parámetro
                         setTimeout(() => {
-                            window.top.location.href = webAppUrl + '?token=' + response.token;
+                            window.top.location.href = webAppUrl + '?token=' + response.token + '&new_session=true';
                         }, 1000);
                     } else {
-                        // Si la respuesta del servidor no es la esperada
-                        throw new Error('Respuesta de inicio de sesión inválida desde el servidor.');
+                        throw new Error('Respuesta de inicio de sesión inválida.');
                     }
                 })
                 .withFailureHandler(error => {
-                    showNotification(`Error al iniciar sesión: ${error.message}`, 'error');
+                    showNotification(`Error: ${error.message}`, 'error');
+                    button.classList.remove('loading');
                     button.disabled = false;
-                    button.textContent = 'Ingresar';
                 })
-                .processLogin(email, password); // Llamamos a la nueva función de login
+                .processLogin(email, password);
         });
 
         document.getElementById('register-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            if (!validateRegisterForm()) {
-                showNotification('Por favor, corrija los errores en el formulario.', 'error');
-                return;
-            }
+            if (!validateForm('register-form')) return;
+
             const email = document.getElementById('reg-email').value;
             const password = document.getElementById('reg-password').value;
             const name = document.getElementById('reg-name').value;
             const button = e.target.querySelector('button');
+            
+            button.classList.add('loading');
             button.disabled = true;
-            button.textContent = 'Registrando...';
 
             google.script.run
                 .withSuccessHandler(() => {
                     showNotification('Cuenta creada con éxito. Ahora puede iniciar sesión.', 'success');
+                    button.classList.remove('loading');
                     button.disabled = false;
-                    button.textContent = 'Registrar';
-                    showLogin();
+                    switchForm('login');
                 })
                 .withFailureHandler(error => {
                     showNotification(`Error al registrar: ${error.message}`, 'error');
+                    button.classList.remove('loading');
                     button.disabled = false;
-                    button.textContent = 'Registrar';
                 })
                 .registerUser(email, password, name);
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loginWrapper.classList.remove('hidden');
+            registerWrapper.classList.add('hidden');
+            registerWrapper.style.position = 'absolute';
         });
     </script>
 </body>
