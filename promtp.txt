@@ -1,0 +1,127 @@
+Prompt Detallado para la Implementación de la Aplicación Web de Registro de Cobranzas en Google Apps Script
+Desarrolla e implementa el código completo para una aplicación web de registro de cobranzas basada en Google Apps Script (GAS), siguiendo el documento técnico proporcionado y el código actualizado como referencia. La aplicación debe incluir un módulo de autenticación simplificada (registro e inicio de sesión con contraseñas hasheadas, sin 2FA inicial), integración con una API externa (eFactory) para datos en tiempo real, uso de Google Sheets como base de datos persistente, caché para optimizar consultas, y una interfaz HTML para la autenticación y el formulario de cobranzas con visualización de registros. El sistema debe ser modular, seguir principios SOLID, y estar preparado para mejoras futuras como 2FA o migración a Firestore.
+Requisitos Generales:
+•	Propósito: Facilitar el registro y gestión de pagos de facturas para vendedores autorizados, con auditoría y seguridad básica.
+•	Tecnologías:
+•	Google Apps Script (GAS): Usar APIS como SpreadsheetApp , Ur1FetchApp ,
+PropertiesService , Session , Utilities (para hashing HMAC-SHA256).
+•	Google Sheets: Base de datos con hojas: 'Usuarios', 'Respuestas', 'Auditoria', 'Registros Eliminados', 'obtener VendedoresPorUsuario I , 'Bancos', 'CorreosPermitidos I .
+•	HTML/CSS/JavaScript (Cliente): Interfaz en Auth. html (login/registro) e index. html (formulario y tabla de registros), usando google. script . run para comunicación servidor-cliente.
+•	API Externa (eFactory): Endpoint https : / / login . factorysoftve . com/api/generica/efactoryApiGenerica . asmx/Se1ecci onar para consultas SQL.
+•	API BCV: Endpoint https://ve.dolarapi.com/vl/dolares/oficial para tasas de cambio.
+•	Funcionalidades Clave:
+1.	Autenticación:
+•	Registro: Valida email contra 'obtener VendedoresPorUsuario'; hashea contraseña con HMAC-SHA256; almacena en I Usuarios l con estado 'activo'.
+•	Login: Verifica email/contraseña hasheada y estado; retorna 'SUCCESS' o error.
+•	Redirección post-login a formulario principal.
+2.	Carga Dinámica de Datos:
+•	Vendedores desde sheet (caché de 3600s).
+•	Clientes y facturas desde API eFactory (caché de 3600s).
+•	Bancos desde sheet (caché de 86400s).
+•	Tasa BCV desde API (caché de 3600s).
+3.	Registro de Pagos: Formulario para capturar monto, forma de pago, bancos, referencia, tipo de cobro, fecha, observaciones; almacena en 'Respuestas'.
+4.	Visualización de Registros: Tabla de registros recientes, filtrable por vendedor, con opción de eliminación (solo por creador) y auditoría en 'Registros Eliminados'.
+5.	Sincronización y Mantenimiento: Sincroniza vendedores desde API; logs en
+'Auditoria'; limpieza de caché comentada para preservar datos.
+•	Características Técnicas:
+•	Modularidad: Clases Logger , CacheManager , ApiHand1er , SheetManager , DataFetcher , CobranzaService , AuthManager siguiendo SOLID.
+•	Seguridad: Hashing de contraseñas; validación de usuarios; logs de errores; preparación para 2FA (código comentado).
+•	Caché: Usa PropertiesService con T TL; evita clear() para preservar datos sensibles.
+•	Auditoría: Logs en sheet 'Auditoria'; archivo de eliminaciones en 'Registros Eliminados'.
+•	Mejores Pråcticas para Login (AuthManager):
+•	Validar emails contra sheet 'obtenerVendedoresPorUsuario I .
+•	Usar HMAC-SHA256 con clave secreta en PropertiesService (no hardcodeada).
+•	Agregar salting por usuario (columna 'Salt' en 'Usuarios l ).
+•	Registrar intentos de login en 'Auditoria'.
+•	Rate limiting båsico (e.g., bloqueo tras 5 intentos fallidos, usando CacheService ).
+•	Scopes minimos en appsscript.json .
+•	Factibilidad: Implementaciön en GAS es de bajo costo; viable para <IOO usuarios diarios.
+Preparar comentarios para migraciön a Firestore/GCP.
+•	Interfaz de Usuario:
+•	Auth.html: Forms para login/registro (email, contraseäa); botones submit; mensajes de error/éxito; redirecciön a index.html post-login.
+•	index.html: Formulario de cobranzas (selects dinåmicos, inputs); tabla de registros con botones de eliminaciön y modal de confirmaciön.
+Detalles Técnicos para Clases del Lado del Servidor:
+1.	Logger (code.js):
+•	Métodos: log(message, . . .args) , error (message, . . .args) , appendLog(1eve1, message) (appenda a 'Auditoria').
+•	Dependencias: SheetManager , Session.getActiveUser() .getEmai1() .
+•	Implementaciön: Usa console. log/error ; appenda [Date, UserEmail, Level, Message] en sheet.
+2.	CacheManager (code.js):
+•	Métodos: get (key, tt1Seconds, fetchFunction, . . .args) (verifica/carga caché); clear() (comentado).
+•	Dependencias: PropertiesService.getScriptProperties() .
+•	Implementaciön: JSON.stringify/parse para datos; TTL en segundos.
+3.	ApiHandler (code.js):
+•	Constructor: carga API_URL y headers (API_KEY, API_USER, API_EMPRESA) desde
+PropertiesService .
+•	Método: fetchData(query) (POST a eFactory; parsea JSON; retorna rows o [l).
+•	Dependencias: Ur1FetchApp , Logger .
+•	Implementaciön: Valida response code 200; maneja excepciones.
+4.	SheetManager (code.js):
+•	Método: getSheet(sheetName) (abre/crea sheet; setea headers desde
+SHEET_CONFIG).
+•	Constantes:
+ 
+SHEET_CONFIG con headers para 'Usuarios l ([ I Correo I , 'Contrasefia l , 'Estado l , 'Fecha
+Registro']).
+•	Dependencias: SpreadsheetApp .
+5.	DataFetcher (code.js):
+•	Constructor: Inicializa ApiHand1er .
+•	Métodos: fetchVendedoresFromSheet() , fetchC1ientesFromApi(codVendedor) , fetchFacturasFromApi(codVendedor, codC1iente) , fetchBcvRate() , fetchBancosFromSheet ( )  
+•	Dependencias: ApiHand1er , SheetManager .
+•	Implementaciön: Queries SQL optimizadas; trim strings; parse floats/dates.
+6.	CobranzaService (code.js):
+•	Constructor: Inyecta DataFetcher .
+•	Métodos: checkAccess() , getVendedores (forceRefresh) , getC1ientesHtm1(codVendedor) , getFacturas( . . . ) , getBcvRate() , getBancos() , submitData(data) , getRecentRecords(vendedor) , deleteRecord (rowlndex) .
+•	Dependencias: DataFetcher , CacheManager , SheetManager , Logger .
+•	Implementación: Caché para datos dinámicos; atomicidad en deletes; format dates/monto.
+7.	AuthManager (auth.js):
+•	Métodos: validateUserInVendedoresSheet (email) , hashPassword(password) (agrega salting), registerUser(emai1, password) , processLogin (email, password) .
+•	Dependencias: SheetManager , Logger , Utilities .
+•	Implementación: Salting con Utilities . newB10b() .getBytes() ; valida estado
+'activo'.
+Detalles Técnicos para Documentos HTML del Lado del Cliente:
+•	Auth.html:
+•	Estructura: Dos formularios (login/registro) con inputs email/contraseña; botones submit; div para mensajes.
+•	JS: Validaciones (email válido, contraseña >8 caracteres); llama google . script . run . processLogin/registerUser ; redirige a index.html en éxito
+(window.location o carga dinámica).
+•	CSS: Básico para centrar forms; responsive con media queries.
+•	index.html:
+•	Estructura: Formulario con selects (vendedor, cliente, factura), inputs (monto, formaPago, bancos, etc.), botón submit; tabla para registros con columnas (Fecha,
+Vendedor, Cliente, Factura, Monto, etc.) y botones delete; modal para confirmación.
+•	JS: On-load carga vendedores ( cargarVendedorEnPregunta@ ); on-change para clientes/facturas; submit llama enviarDatos ; refresh tabla con obtenerRegistrosEnviados ; modal toggle para deletes.
+•	CSS: Layout en secciones; tabla responsive; modal con display:none.
+•	Integración: Usa google . script . run . withSuccessHand1er ( . ) .withFai1ureHand1er( . . . ) para todas las llamadas servidor.
+Requisitos para Implementación en GAS:
+1 . Configuración:
+•	Proyecto GAS vinculado a Sheet (ID:
+IllJ6Y02LdR5fuNu1WCf2sHXUqLlDfFAx60t3CrelMNuEI).
+•	Propiedades en PropertiesService : API _ URL, API_KEY, API _USER, API _ EMPRESA.
+•	Scopes en appsscript.json : ["https://www.googleapis.com/auth/spreadsheets",
+"https://www.googlea pis.comlauth/script.external—request",
+" https://www.googleapis.com/auth/userinfo.email"].
+2.	Despliegue:
+•	Archivos: code.js, auth.js, index.html, Auth.html.
+•	Web App: Ejecutar como "Yo"; acceso "Cualquiera, incluso anónimos" (con auth interna).
+•	Triggers: Time-driven para sincronizarVendedoresDesdeApi .
+3.	Pruebas:
+•	Verifica fetches API, login/registro, submit de datos.
+•	Monitorea quotas (301< ejecuciones/día).
+•	Usa Logger para debugging.
+Información Adicional Requerida para Generar HTML:
+•	Especifica si Auth.html debe incluir branding (e.g., logo, título).
+•	Define estilos CSS exactos (e.g., colores, fuentes) o confirma básico (e.g., centered forms, Bootstrap-like).
+•	Indica si index.html debe cargar datos iniciales en tabla al abrir.
+•	Confirma flujo post-login (e.g., redirect completo vs. carga dinámica).
+•	Especifica validaciones JS específicas (e.g., regex para email, reglas para monto).
+Salida Esperada:
+•	Archivos como bloques de código separados:
+•	code.js : Lógica principal.
+•	auth.js : Autenticación.
+•	index. html : Formulario y tabla.
+•	Auth.html : Login/registro.
+•	Cada archivo debe ser ejecutable en GAS, con comentarios JSDoc y logs.
+•	Preparado para mejoras: Salting en hashing, comentarios para 2FA, notas para Firestore.
+Instrucciones Finales:
+•	Genera el código completo basado en el documento técnico y el código actualizado.
+•	Asegura compatibilidad con GAS (scopes, APIS).
+•	Incluye validaciones cliente/servidor y manejo de errores.
+•	Proporciona archivos listos para copiar al editor GAS, con nombres explícitos.

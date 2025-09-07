@@ -1,0 +1,209 @@
+Documento Técnico: Aplicación de Registro de Cobranzas (Versión Actualizada)
+Introducción y Propósito
+Esta aplicación es un sistema web basado en Google Apps Script diseñado para facilitar el registro y gestión de cobranzas (pagos de facturas) en un entorno comercial, enfocado en ventas y finanzas. Su propósito principal sigue siendo permitir a usuarios autorizados (como vendedores) seleccionar clientes y facturas asociadas, registrar detalles de pagos
+(incluyendo montos, formas de pago, bancos y referencias), y mantener un historial auditable de estos registros.
+En esta versión actualizada, se ha incorporado un módulo de autenticación simplificada ( auth .js ) que maneja el registro y el inicio de sesión de usuarios con contraseñas hasheadas, sin factor de autenticación de dos pasos (2FA). Esto mejora la seguridad al requerir credenciales válidas antes de acceder al formulario principal. La validación de usuarios se realiza contra una base de datos de vendedores sincronizada, asegurando que solo personal autorizado pueda registrarse e iniciar sesión. El sistema integra datos de una API externa (eFactory) para información en tiempo real, utilizando Google Sheets como almacenamiento persistente.
+El código mantiene principios SOLID para modularidad, pero ahora incluye manejo de sesiones de usuario y protección contra accesos no autorizados. Esto resuelve problemas de procesos manuales, agregando capas de seguridad para entornos con datos sensibles como información financiera.
+Cambios clave en esta actualización:
+•	Introducción de autenticación con registro y login.
+•	Modificación en doGet() para servir una página de autenticación ( Auth .html ) por defecto.
+•	Comentado el borrado de caché para preservar datos sensibles (e.g., posibles tokens futuros).
+•	Ajustes en el manejo de sheets para soportar la nueva hoja 'Usuarios'.
+Tecnologías Utilizadas
+El stack tecnológico permanece centrado en Google Workspace y JavaScript, con adiciones para seguridad:
+•	Google Apps Script (GAS): Plataforma principal para código server-side. APIS como SpreadsheetApp , Ur1FetchApp , PropertiesService , Session , y ahora Utilities para hashing criptográfico (HMAC-SHA256).
+•	Google Sheets: Base de datos persistente. Hojas actualizadas incluyen 'Usuarios' para almacenamiento de credenciales (email, hash de contraseña, estado, fecha de registro), además de las previas ('Respuestas', 'Auditoria', etc.).
+•	HTML/CSS/JavaScript (Cliente): Interfaz definida en Auth . html (página de login) e index . html (formulario principal). Actualizaciones implican scripts cliente para manejar login/registro vía google.script . run , actualizando dinámicamente el Ul postautenticación.
+•	API Externa (eFactory): Llamadas HTTP POST para consultas SQL.
+•	API de Tasa de Cambio (BCV): Fetch de tasas dinámicas.
+•	Otras Bibliotecas y Servicios:
+•	Hashing con Utilities. computeHmacSha256Signature y Utilities. base64Encode .
+•	Caché manual con timestamps.
+•	No frameworks externos; todo vanilla.
+Esta actualización enfatiza seguridad con hashing de contraseñas, manteniendo la ligereza y serverless nature.
+Funcionalidades Principales
+Las funcionalidades core se mantienen, con adiciones en autenticación:
+1.	Autenticación y Acceso:
+•	Registro de Usuarios: Valida email contra hoja 'obtenerVendedoresPorUsuario' (sincronizada con API eFactory). Hashea contraseña y almacena en 'Usuarios' con estado 'activo'.
+•	Inicio de Sesión: Verifica credenciales hasheadas y estado de cuenta. Retorna
+'SUCCESS' en éxito.
+•	Acceso restringido: doGet() ahora sirve Auth . html para login, en lugar de verificar emails permitidos directamente.
+•	Logs de intentos fallidos.
+2.	Carga Dinámica de Datos:
+•	Vendedores, clientes, facturas, bancos y tasa BCV se cargan como antes, con caché optimizado (clear comentado para preservar datos).
+3.	Registro de Pagos:
+•	Formulario para detalles de pago, enviado a 'Respuestas'.
+4.	Visualización y Gestión de Registros:
+•	Tabla de registros recientes con filtros y eliminaciones auditadas.
+5.	Sincronización y Mantenimiento:
+•	Sincronización de vendedores desde API.
+•	Limpieza de caché comentada para evitar pérdida de propiedades (e.g., tokens de
+2FA futuros).
+6.	Interfaz de Usuario:
+•	Auth.html maneja login/registro; post-login, carga formulario de index. html .
+•	Elementos dinámicos y modales permanecen.
+Estas actualizaciones aseguran que el flujo comience con autenticación segura antes de operaciones de cobranza.
+Características Clave
+•	Modularidad y SOLID: Clases separadas, ahora incluyendo AuthManager para autenticación independiente.
+•	Seguridad Mejorada:
+•	Hashing de contraseñas con clave secreta (HMAC-SHA256).
+•	Validación de usuarios contra base de vendedores para prevenir registros no autorizados.
+•	Estados de cuenta ('activo) para control administrativo.
+•	Optimización de Rendimiento: Caché con T TL; clear comentado para estabilidad.
+•	Manejo de Errores y Logs: Extendido a autenticación (e.g., errores de usuario no encontrado).
+•	Auditoría y Trazabilidad: Logs en 'Auditoria'; eliminaciones archivadas.
+•	Escalabilidad Limitada: Dependiente de quotas de GAS; ahora con persistencia de propiedades para sesiones.
+Nuevas características enfocan en autenticación robusta, aunque sin 2FA (como notado en comentarios).
+Detalle Técnico para el Desarrollo de las Clases del Lado del Servidor
+El desarrollo de las clases server-side sigue principios SOLID, asegurando responsabilidades únicas, extensibilidad y dependencia inyectada. A continuación, se detalla cada clase principal en code.js y auth.js , incluyendo su propósito, métodos clave, dependencias y consideraciones de implementación:
+1. Logger (en code.js)
+•	Propósito: Manejar logging de información y errores, tanto en consola como en sheets para auultorla persistente.
+•	Métodos Detallados:
+•	static log(message, . .args) : Registra en consola y appenda a sheet 'Auditoria' con nivel 'INFO', timestamp y usuario activo.
+•	static error (message, . . .args) : Similar, pero con nivel 'ERROR'.
+•	static appendLog(1eve1, message) : Método privado para append row en sheet con [Date, UserEmail, Level, Message].
+•	Dependencias: SheetManager para acceso a sheets, Session para email de usuario.
+•	Consideraciones: Usa console.log/error para depuración inmediata; asegura que el sheet exista para evitar errores. Extensible para niveles adicionales (e.g., WARN).
+2. CacheManager (en code.js)
+•	Propósito: Proporcionar caché temporal con T TL para optimizar fetches repetitivos, usando PropertiesService .
+•	Métodos Detallados:
+•	static get(key, tt1Seconds, fetchFunction, . . .args) : Verifica caché; si válido, retorna data; sino, ejecuta fetchFunction, almacena y retorna.
+•	static clear() : Comentado para preservar propiedades sensibles; si se usa, borra todas las propiedades.
+•	Dependencias: PropertiesService.getScriptProperties() para almacenamiento clave-valor.
+•	Consideraciones: JSON.stringify/parse para datos complejos; T TL en segundos (e.g.,
+3600 para 1 hora). Monitorea límites de propiedades (IOOKB por propiedad).
+3. ApiHandler (en code.js)
+•	Propósito: Encapsular llamadas HTTP a la API eFactory, manejando headers y errores.
+ 
+: Inicializa URL y headers desde Propertiesservice ; lanza error si credenciales faltan.
+•	fetchData(query) : POST request con payload JSON; parsea respuesta; retorna array de rows o [l si vacío.
+•	Dependencias: Ur1FetchApp , PropertiesService , Logger para errores.
+•	Consideraciones: muteHttpExceptions: false para capturar errores; valida código 200 y estructura JSON. Extensible para otros endpoints.
+4. SheetManager (en code.js)
+•	Propósito: Gestionar acceso y creación de sheets en un spreadsheet específico.
+•	Métodos Detallados:
+•	static getSheet(sheetName) : Abre spreadsheet por ID; crea sheet si no existe y tiene config; setea headers si aplica.
+•	Dependencias: SpreadsheetApp.openBy1d (SPREADSHEET_ID) , constante SHEET_CONFIG para headers.
+•	Consideraciones: ID hardcodeado; auto-creación reduce errores manuales. Agrega 'Usuarios' a SHEET_CONFIG con headers ['Correo', 'Contraseña', 'Estado', 'Fecha
+Registro'].
+5. DataFetcher (en code.js)
+•	Propósito: Fetch datos de API y sheets, inyectando dependencias.
+: Inicializa ApiHand1er .
+•	fetchVendedoresFromSheet() : Lee sheet y mapea a objetos {nombre, codigo}.
+•	fetchC1ientesFromApi(codVendedor) : Query SQL para clientes únicos; mapea resultados.
+•	fetchFacturasFromApi(codVendedor, codC1iente) : Query para facturas pendientes.
+•	fetchBcvRate() : Fetch tasa de cambio de API pública.
+•	fetchBancosFromSheet() : Lee lista de bancos.
+•	Dependencias: ApiHand1er , SheetManager .
+•	Consideraciones: Trimming de strings; filtros para datos válidos. Extensible para más fetches.
+6. CobranzaService (en code.js)
+•	Propósito: Servicio principal para lógica de negocio, usando inyección de dependencias. (dataFetcher) : Inyecta DataFetcher .
+•	static get userEmai1() : Getter para email activo.
+•	checkAccess() : Verifica emails permitidos (legacy; ahora complementa auth).
+•	getVendedores(forceRefresh) : Usa caché para HTML de options.
+•	getC1ientesHtm1(codVendedor) : Similar, con sanitizaciön.
+•	getFacturas(. . . ) : Mapea facturas con parsing.
+•	getBcvRate() , getBancos() : Cacheados.
+•	submitData(data) : Appenda row a 'Respuestas'.
+•	getRecentRecords (vendedor) : Filtra y formatea registros recientes.
+•	deleteRecord (rowlndex) : Verifica ownership, archiva y borra.
+•	Dependencias: DataFetcher , CacheManager , SheetManager , Logger .
+•	Consideraciones: Parsing de floats/dates; reversiön para recent records. Asegura atomicidad en deletes.
+7. AuthManager (en auth.js)
+•	Propösito: Manejar autenticaciön segura.
+ 
+•	static validateUserInVendedoresSheet (email) : Busca email en sheet.
+•	static hashPassword(password) : HMAC-SHA256 con clave; mejora: agregar salt único (generar con Utilities.newB10b() .getBytes() y almacenar).
+•	static registerUser(emai1, password) : Valida, hashea, appenda a 'Usuarios'.
+•	static processLogin (email, password) : Encuentra row, compara hashes, verifica estado.
+•	Dependencias: SheetManager , Logger , Utilities para hashing.
+•	Consideraciones: Trimming; errores descriptivos. Mejora: Salting por usuario (agrega columna 'Salt l en sheet).
+Estas clases aseguran modularidad: e.g., CobranzaService depende de DataFetcher , que depende de ApiHand1er .
+Lo que se Requiere para la Implementación de la Aplicación en GAS
+Para implementar en Google Apps Script:
+1 . Configuración Inicial:
+•	crea un nuevo proyecto GAS vinculado a un eoogle sneet (ID: IllJ6Y02LdR5fuNu1WCf2sHXUqLlDfFAx60t3CrelMNuEI).
+•	Configura propiedades en Script Properties: API_URL, API_KEY, API_USER,
+API EMPRESA.
+•	Asegura scopes en appsscript.json :
+["https://www„googleapis.com/auth/spreadsheets",
+"https://www.googlea pis.comlauth/script.external—request",
+" https://www.googleapis.com/auth/userinfo.email"].
+2.	Desarrollo y Despliegue:
+•	Copia código a archivos: code.js (principal), auth.js (autenticación), index.html y Auth.html (Ul).
+•	Implementa funciones públicas: doGet(), cargarVendedorEnPreguntaO(), etc., expuestas vía google.script.run.
+•	Despliega como Web App: Ejecutar como "Yo" (tu cuenta), acceso "Cualquiera, incluso anónimos" (pero con auth interna).
+•	Configura triggers: e.g., time-driven para sincronizar VendedoresDesdeApi().
+3.	Pruebas y Depuración:
+•	Usa Logger para traces; prueba endpoints con mocks si necesario.
+•	Verifica quotas: Limita fetches; usa caché.
+•	Seguridad: Prueba brute-force; implementa rate limiting con CacheService.
+4.	Requisitos de Entorno:
+•	Cuenta Google Workspace; acceso a Sheets y Script Editor.
+•	No servidores externos; todo serverless.
+Detalle Técnico que se Debe Suministrar para Obtener en la Salida los Documentos HTML del Lado del Cliente
+Para generar index.html y Auth.html en la salida, suministra:
+•	Auth.html: Contiene forms para login y registro (inputs para email/contraseña, botones submit). Scripts JS para: validar inputs, llamar google.script.run.processLogin/registerUser, manejar respuestas (e.g., redirigir a index si éxito), mostrar errores.
+•	index.html: Formulario de cobranzas (selects para vendedor/cliente/factura, inputs para monto/formaPago/etc.), tabla para registros (con botones delete y modal confirm). Scripts JS para: cargar datos on-load/on-change (e.g., cargarVendedorEnPreguntaO), submit enviarDatos, refresh tabla con obtenerRegistrosEnviados, manejar deletes.
+2. Detalles Técnicos Requeridos:
+•	CSS/Estilos: Básicos para layout (e.g., divs para secciones, modales con display:none).
+•	Eventos JS: addEventListener para changes/submits; async callbacks para google.script.run.
+•	Integración con Servidor: Llamadas como google.script.run.withSuccessHandler(...).withFailureHandler(...).functionName(args).
+•	Validaciones Cliente: JS para checks (e.g., monto 	campos requeridos).
+•	Redirección Post-Login: En Auth.html, tras éxito, usa window.location o innerHTML para cargar contenido de index.html dinámicamente (o sirve index via doGet postauth).
+•	Modal y Dinámicos: JS para toggle modal, populate selects con HTML retornado.
+Suministrando estos detalles, la salida producirá HTML completos, listos para GAS.
+Recomendaciones sobre Mejores Prácticas para el Módulo de Login
+El módulo de login actual utiliza hashing de contraseñas con HMAC-SHA256 y validación contra una hoia de cálculo. lo cual es un buen inicio Dara una autenticación oersonalizada en GAS. Sin embargo, para alinearse con mejores prácticas, se recomiendan las siguientes mejoras basadas en guías estándar de desarrollo seguro en Google Apps Script:
+•	Uso de OAuth2 0 Integración con Google Accounts: En lugar de un sistema de login personalizado, considera integrar autenticación nativa de Google Accounts para verificar usuarios. Esto reduce la necesidad de manejar contraseñas y aprovecha la seguridad de Google, evitando almacenamiento de hashes en sheets.
+•	Almacenamiento Seguro de Secretos: Usa PropertiesService para almacenar claves secretas (como la usada en hashing) en lugar de hardcodearlas en el código. Para mayor seguridad, migra a Google Cloud Secret Manager si se escala a GCP, ya que sheets no son ideales para datos sensibles.
+•	Manejo de Scopes y Permisos: Asegura que el script solicite scopes mínimos (e.g., solo acceso a sheets necesarias). Revisa automáticamente los scopes con GAS para evitar over-privileging, y maneja revocaciones de tokens si se implementa refresh.
+•	Validaciones en Cliente y Servidor: Implementa rate limiting en intentos de login para prevenir brute-force, y valida inputs en JS cliente (e.g., longitud de contraseña mínima de
+12 caracteres con complejidad). Siempre revalida en servidor.
+•	Auditoría y Monitoreo: Registra todos los intentos de login (exitosos y fallidos) en
+'Auditoria', incluyendo IP si disponible vía GAS. Considera agregar 2FA con OTP vía email usando MailApp para capas adicionales.
+•	Cumplimiento y Actualizaciones: Sigue principios de OWASP para autenticación (e.g., secure session management). Actualiza regularmente el código para parches de seguridad en GAS.
+Estas prácticas elevarían la seguridad del módulo, haciendo el sistema más robusto contra amenazas comunes.
+Factibilidad Técnica y Económica del Proyecto
+Factibilidad Técnica: El proyecto es altamente factible en su estado actual, ya que se basa en Gooqle ADOS Script, una plataforma serverless aue integra nativamente con Gooqle Sheets y APIS externas. No requiere servidores dedicados, y el código modular (SOLID) facilita el mantenimiento. Limitaciones incluyen quotas de GAS (e.g., 30,000 ejecuciones/día, 6 minutos por ejecución), pero para un uso moderado (e.g., <100 usuarios diarios), es suficiente. La integración con eFactory y BCV demuestra viabilidad para fetches en tiempo real. Expansiones como 2FA o reportes son técnicas simples en GAS. Factibilidad Económica: Bajo costo inicial y operativo. GAS es gratuito hasta exceder quotas (entonces -$0.04 por 1,000 ejecuciones adicionales). Sheets es gratis con límites de almacenamiento (5M celdas por spreadsheet). Para un equipo pequeño, el costo anual podría ser <$100. No hay licencias; solo potenciales costos de API externa si aplica.
+Retorno de inversión alto al automatizar cobranzas, reduciendo errores manuales y tiempo (e.g., ahorro de 20-30% en horas de finanzas).
+En resumen, técnica y económicamente viable para SMBs, con escalabilidad limitada por quotas.
+Escalado Posible a Firestore y GCP
+Para manejar mayor volumen (e.g., 	usuarios o millones de registros), migrar de
+Sheets a Firestore (NoSQL database en GCP) es recomendable, ya que ofrece escalabilidad horizontal, queries rápidas y alta disponibilidad. Integración con GAS es directa vía
+Firebase Admin SDK o REST APIS; por ejemplo, exporta datos de Sheets a Firestore usando scripts como en tutoriales existentes.
+Pasos para Escalado:
+1.	Crea un proyecto GCP y vincula con GAS (requiere GCP Standard App Script Project).
+2.	Migra datos: Usa GAS para leer Sheets y escribir en Firestore collections (e.g.,
+'Usuarios', 'Respuestas').
+3.	Actualiza código: Reemplaza SpreadsheetApp con Firestore SDK para operaciones CRUD.
+4.	Añade features: Indexes para queries eficientes, rules de seguridad para accesos.
+Costos en 2025: Firestore tiene cuota gratuita (IGB storage, 501< reads/día, 20k writes/día). Luego, -$O.06/100k reads, $O.18/100k writes, $O.15/GB storage/mes. Para 10k operaciones diarias, costo -$10-50/mes. GCP ofrece committed use discounts para ahorros (hasta 20-57% en commitments de 1-3 años).
+Beneficios: Escalabilidad ilimitada (queries escalan con resultados, no dataset size), mejor performance para apps concurrentes, y integración con otros GCP services (e.g., Cloud
+Functions para lógica serverless avanzada). Factible para crecimiento, con costo proporcional al uso.
+Análisis y Mejoras Sugeridas
+El código actualizado es más seguro con autenticación integrada, pero persisten oportunidades en robustez y usabilidad. Prioridades actualizadas:
+1. Seguridad y Cumplimiento
+•	Agregar Salting a Hashing: La clave estática es vulnerable; usar salts por usuario.
+•	Implementar 2FA: Agregar OTP vía email.
+•	Roles y Permisos: Extender 'Usuarios' con roles.
+•	Sesiones Seguras: Usar CacheService para tokens.
+•	Cumplimiento: Encriptar datos; auditar accesos.
+2. Usabilidad y IJI/UX
+•	Formulario de Login en Cliente: Validaciones JS.
+•	Redirección Post-Login: Carga dinámica.
+•	Responsividad y Filtros: Media queries y paginación.
+3. Rendimiento y Escalabilidad
+•	Configuración de Sheets: Agregar 'Usuarios' a SHEET CONFIG .
+•	ue uuu•ao. IVIu1 	Cu Uu' 1 luso.
+•	Migración DB: A Firestore para alto volumen.
+4. Funcionalidades Adicionales
+•	Recuperación de Contraseña: Reset vía email.
+•	Reportes: Summaries autenticados.
+•	Integraciones: Notificaciones.
+•	Soporte Multi-Moneda.
+5. Mantenibilidad y Testing
+•	Tests: Unit tests para AuthManager .
+•	Documentación: Expandir JSDoc.
+•	Versionado: Branches en GAS.
+Estas mejoras construyen sobre la base actualizada, priorizando seguridad (e.g., 2FA) para producción. El sistema es funcional y más seguro, con potencial para expansiones.
