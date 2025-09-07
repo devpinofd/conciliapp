@@ -1,169 +1,141 @@
-/**
- * @fileoverview Lógica de autenticación para registro y login sin 2FA.
- * Valida usuarios contra la hoja 'obtenerVendedoresPorUsuario' y usa hashing seguro.
- */
+// auth.js - Módulo de Autenticación con Tokens de Sesión
 
-/**
- * Clase para manejar autenticación de usuarios.
- */
-class AuthManager {
-  /**
-   * Valida si un correo electrónico existe en la hoja 'obtenerVendedoresPorUsuario'.
-   * @param {string} email El correo electrónico a buscar.
-   * @return {boolean} true si el correo existe en la hoja.
-   */
-  static validateUserInVendedoresSheet(email) {
-    try {
-      const sheet = SheetManager.getSheet('obtenerVendedoresPorUsuario');
-      const data = sheet.getDataRange().getValues();
-      const headers = data.shift();
-      const emailIndex = headers.indexOf('correo');
+const SECRET_KEY_PROPERTY = 'AUTH_SECRET_KEY'; // Clave para hashear, guardada en PropertiesService
 
-      if (emailIndex === -1) {
-        throw new Error('La columna "correo" no se encontró en la hoja "obtenerVendedoresPorUsuario".');
-      }
-
-      const existingEmails = data.map(row => String(row[emailIndex]).trim().toLowerCase());
-      return existingEmails.includes(email.toLowerCase());
-    } catch (e) {
-      Logger.error(`Error al validar usuario en hoja de vendedores: ${e.message}`);
-      return false;
-    }
-  }
-
-  /**
-   * Hashea una contraseña usando HMAC-SHA256 con una clave secreta.
-   * @param {string} password La contraseña a hashear.
-   * @return {string} La contraseña hasheada en Base64.
-   */
-  static hashPassword(password) {
-    try {
-      const props = PropertiesService.getScriptProperties();
-      const key = props.getProperty('SECRET_KEY') || 'mi_llave_secreta_super_segura';
-      const hash = Utilities.computeHmacSha256Signature(password, key);
-      return Utilities.base64Encode(hash);
-    } catch (e) {
-      Logger.error(`Error al hashear contraseña: ${e.message}`);
-      throw new Error('Error al procesar la contraseña.');
-    }
-  }
-
-  /**
-   * Registra un nuevo usuario en la hoja 'Usuarios'.
-   * @param {string} email El correo electrónico del usuario.
-   * @param {string} password La contraseña.
-   * @return {string} Mensaje de confirmación.
-   */
-  static registerUser(email, password) {
-  try {
-    Logger.log(`[Registro] Iniciando registro para: ${email}`);
-    Logger.log(`[Registro] Validando correo en obtenerVendedoresPorUsuario`);
-    if (!this.validateUserInVendedoresSheet(email)) {
-      Logger.log(`[Registro] Correo ${email} no encontrado en obtenerVendedoresPorUsuario`);
-      throw new Error('Usuario no autorizado. El correo no existe en la base de datos de vendedores.');
-    }
-
-    const sheet = SheetManager.getSheet('Usuarios');
-    Logger.log(`[Registro] Hoja Usuarios obtenida: ${sheet.getName()}`);
-    const lastRow = sheet.getLastRow();
-    let data = [];
-    if (lastRow > 1) {
-      data = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
-    }
-    Logger.log(`[Registro] Correos existentes: ${data}`);
-    const normalizedEmail = email.toLowerCase();
-
-    if (data.includes(normalizedEmail)) {
-      Logger.log(`[Registro] Correo ${normalizedEmail} ya registrado`);
-      throw new Error('El correo ya está registrado.');
-    }
-
-    const hashedPassword = this.hashPassword(password);
-    Logger.log(`[Registro] Contraseña hasheada: ${hashedPassword}`);
-    const date = new Date();
-    Logger.log(`[Registro] Añadiendo fila: [${normalizedEmail}, ${hashedPassword}, 'activo', ${date}]`);
-    sheet.appendRow([normalizedEmail, hashedPassword, 'activo', date]);
-    Logger.log(`[Registro] Fila añadida para ${email} en la hoja Usuarios`);
-
-    Logger.log(`[Registro] Usuario ${email} registrado con éxito`);
-    return 'Registro completado. Puedes iniciar sesión.';
-  } catch (e) {
-    Logger.error(`[Registro] Error al registrar usuario ${email}: ${e.message}`);
-    throw new Error(`Error: ${e.message}`);
+// Inicializa la clave secreta si no existe
+function initializeAuthSecret() {
+  const scriptProps = PropertiesService.getScriptProperties();
+  if (!scriptProps.getProperty(SECRET_KEY_PROPERTY)) {
+    scriptProps.setProperty(SECRET_KEY_PROPERTY, Utilities.getUuid());
   }
 }
-  /**
-   * Procesa el intento de inicio de sesión.
-   * @param {string} email El correo del usuario.
-   * @param {string} password La contraseña.
-   * @return {string} 'SUCCESS' si es exitoso.
-   */
-  static processLogin(email, password) {
-    try {
-      const sheet = SheetManager.getSheet('Usuarios');
-      const data = sheet.getDataRange().getValues();
-      const headers = data.shift();
-      const emailIndex = headers.indexOf('Correo');
-      const passwordIndex = headers.indexOf('Contraseña');
-      const statusIndex = headers.indexOf('Estado');
-
-      if (emailIndex === -1 || passwordIndex === -1 || statusIndex === -1) {
-        throw new Error('Formato de hoja "Usuarios" incorrecto.');
-      }
-
-      const normalizedEmail = email.toLowerCase();
-      const userRow = data.find(row => String(row[emailIndex]).toLowerCase() === normalizedEmail);
-
-      if (!userRow) {
-        throw new Error('Usuario no encontrado.');
-      }
-
-      const storedHashedPassword = userRow[passwordIndex];
-      const hashedPassword = this.hashPassword(password);
-
-      if (hashedPassword !== storedHashedPassword) {
-        throw new Error('Contraseña incorrecta.');
-      }
-
-      if (userRow[statusIndex] !== 'activo') {
-        throw new Error('Cuenta no activa. Contacta al administrador.');
-      }
-
-      Logger.log(`Login exitoso para: ${email}`);
-      PropertiesService.getUserProperties().setProperty('isLoggedIn', 'true');
-      return 'SUCCESS';
-    } catch (e) {
-      Logger.error(`Error en login para ${email}: ${e.message}`);
-      throw new Error(`Error: ${e.message}`);
-    }
-  }
-}
-
-// Interfaz para el cliente (funciona con google.script.run)
-/**
- * Registra un nuevo usuario.
- * @param {string} email Correo del usuario.
- * @param {string} password Contraseña.
- * @return {string} Mensaje de resultado.
- */
-function registerUser(email, password) {
-  try {
-    return AuthManager.registerUser(email, password);
-  } catch (e) {
-    return `Error: ${e.message}`;
-  }
-}
+initializeAuthSecret();
 
 /**
- * Procesa el inicio de sesión.
- * @param {string} email Correo del usuario.
- * @param {string} password Contraseña.
- * @return {string} Resultado del login.
+ * Procesa el intento de login de un usuario.
+ * Si es exitoso, genera un token de sesión único.
+ * @param {string} email El correo del usuario.
+ * @param {string} password La contraseña del usuario.
+ * @returns {object} Un objeto con el estado del login y el token si es exitoso.
  */
 function processLogin(email, password) {
   try {
-    return AuthManager.processLogin(email, password);
+    const userSheet = SheetManager.getSheet('Usuarios');
+    const usersData = userSheet.getDataRange().getValues();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Buscar al usuario por correo
+    const userRow = usersData.find(row => row[0].toString().trim().toLowerCase() === normalizedEmail);
+
+    if (!userRow) {
+      Logger.error(`Intento de login fallido (usuario no encontrado): ${email}`);
+      throw new Error("Usuario o contraseña incorrectos.");
+    }
+
+    const storedHash = userRow[1];
+    const passwordHash = hashPassword(password);
+
+    if (storedHash !== passwordHash) {
+      Logger.error(`Intento de login fallido (contraseña incorrecta): ${email}`);
+      throw new Error("Usuario o contraseña incorrectos.");
+    }
+
+    if (userRow[2] !== 'activo') {
+      Logger.error(`Intento de login fallido (cuenta inactiva): ${email}`);
+      throw new Error("La cuenta no está activa. Contacte al administrador.");
+    }
+
+    // --- Lógica de Token de Sesión ---
+    const sessionCache = CacheService.getUserCache();
+    const token = Utilities.getUuid();
+    
+    // Guardar el token en caché, asociándolo con el email y nombre del usuario.
+    // El token expira en 1 hora (3600 segundos).
+    const userData = { email: normalizedEmail, name: userRow[3] || normalizedEmail.split('@')[0] };
+    sessionCache.put(token, JSON.stringify(userData), 3600);
+
+    Logger.log(`Login exitoso y token generado para: ${email}`);
+    return { status: 'SUCCESS', token: token };
+
   } catch (e) {
-    return `Error: ${e.message}`;
+    Logger.error(`Error en processLogin: ${e.message}`);
+    throw e;
   }
+}
+
+/**
+ * Valida un token de sesión.
+ * @param {string} token El token a validar.
+ * @returns {object|null} Los datos del usuario si el token es válido, de lo contrario null.
+ */
+function checkAuth(token) {
+  if (!token) {
+    return null;
+  }
+  const sessionCache = CacheService.getUserCache();
+  const userDataJson = sessionCache.get(token);
+
+  if (userDataJson) {
+    // El token es válido, devolvemos los datos del usuario.
+    return JSON.parse(userDataJson);
+  }
+  
+  return null;
+}
+
+/**
+ * Cierra la sesión de un usuario eliminando su token de la caché.
+ * @param {string} token El token de sesión a invalidar.
+ */
+function logoutUser(token) {
+  try {
+    if (token) {
+      const sessionCache = CacheService.getUserCache();
+      sessionCache.remove(token);
+      Logger.log(`Sesión cerrada para el token: ${token}`);
+    }
+  } catch (e) {
+    Logger.error(`Error en logoutUser: ${e.message}`);
+    // No lanzamos error al cliente, el logout debe ser silencioso.
+  }
+}
+
+
+/**
+ * Registra un nuevo usuario si su correo está en la lista de vendedores permitidos.
+ * @param {string} email
+ * @param {string} password
+ * @param {string} name
+ * @returns {string} Mensaje de éxito.
+ */
+function registerUser(email, password, name) {
+  // ... (La lógica de registerUser no necesita cambios drásticos, pero nos aseguramos que esté completa)
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!validateUserInVendedoresSheet(normalizedEmail)) {
+    throw new Error("No está autorizado para registrarse. Su correo no se encuentra en la lista de vendedores.");
+  }
+  
+  const userSheet = SheetManager.getSheet('Usuarios');
+  const usersData = userSheet.getRange("A:A").getValues().flat();
+  if (usersData.map(e => e.trim().toLowerCase()).includes(normalizedEmail)) {
+    throw new Error("Este correo electrónico ya está registrado.");
+  }
+
+  const passwordHash = hashPassword(password);
+  userSheet.appendRow([normalizedEmail, passwordHash, 'activo', name, new Date()]);
+  Logger.log(`Nuevo usuario registrado: ${email}`);
+  return "Usuario registrado con éxito.";
+}
+
+function validateUserInVendedoresSheet(email) {
+    const sheet = SheetManager.getSheet('obtenerVendedoresPorUsuario');
+    if (sheet.getLastRow() < 2) return false;
+    const emailList = sheet.getRange("A2:A" + sheet.getLastRow()).getValues().flat();
+    return emailList.map(e => e.trim().toLowerCase()).includes(email);
+}
+
+function hashPassword(password) {
+  const secret = PropertiesService.getScriptProperties().getProperty(SECRET_KEY_PROPERTY);
+  const signature = Utilities.computeHmacSha256Signature(password, secret);
+  return Utilities.base64Encode(signature);
 }

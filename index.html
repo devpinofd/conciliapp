@@ -78,7 +78,7 @@
         }
         .form-actions {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             margin-top: 28px;
         }
         .button {
@@ -106,6 +106,10 @@
         .button-danger:hover {
             background-color: #dc2626;
             transform: translateY(-2px);
+        }
+        .button-danger:disabled {
+            background-color: #fca5a5;
+            cursor: not-allowed;
         }
         .button-secondary {
             background-color: #f1f5f9;
@@ -296,6 +300,32 @@
             margin-bottom: 10px;
             display: none;
         }
+        .app-header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+        .app-header h2 {
+            color: #0f172a;
+            font-size: 20px;
+            margin: 0;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-info span {
+            font-weight: 500;
+            color: #334155;
+        }
     </style>
 </head>
 <body>
@@ -304,14 +334,20 @@
         <div class="spinner"></div>
     </div>
 
+    <header class="app-header">
+        <h2>Bienvenido, <?!= user.name ?></h2>
+        <div class="user-info">
+            <span>(<?!= user.email ?>)</span>
+            <button id="logout-button" class="button button-danger">Cerrar Sesión</button>
+        </div>
+    </header>
+
     <div class="form-container">
         <header class="form-header">
             <h1>Registro de Cobranzas</h1>
         </header>
         <div style="text-align: center; margin-bottom: 20px;">
-            <p class="tasa-oficial-text">
-                <span id="tasa-oficial">Cargando...</span>
-            </p>
+            <p id="tasa-oficial" class="tasa-oficial-text">Cargando...</p>
         </div>
         <main class="form-body">
             <form id="formulario">
@@ -419,7 +455,6 @@
                     <textarea id="observaciones" name="observaciones" rows="3"></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="button button-danger" onclick="logout()">Cerrar Sesión</button>
                     <button type="submit" class="button button-primary">Enviar Cobranza</button>
                 </div>
             </form>
@@ -467,7 +502,8 @@
     </div>
 
     <script>
-        // Gestión de caché local
+        const webAppUrl = "<?!= url ?>";
+
         const clientCache = {
             TTL: 3600 * 1000,
             PREFIX: 'formCobranza_',
@@ -506,7 +542,6 @@
             }
         };
 
-        // Clase para gestionar la UI
         class UiManager {
             constructor() {
                 this.elements = {
@@ -523,23 +558,14 @@
                     confirmDeleteBtn: document.getElementById('confirm-delete-btn'),
                     cancelDeleteBtn: document.getElementById('cancel-delete-btn'),
                     tasaBcvDiv: document.getElementById('tasa-bcv'),
-                    tasaOficial: document.getElementById('tasa-oficial')
+                    tasaOficial: document.getElementById('tasa-oficial'),
+                    logoutButton: document.getElementById('logout-button')
                 };
             }
-            toggleLoading(show) {
-                this.elements.loadingSpinner.style.display = show ? 'flex' : 'none';
-            }
-            showNotification(message, type = 'success') {
-                this.elements.notification.textContent = message;
-                this.elements.notification.className = `notification ${type} visible`;
-                setTimeout(() => this.elements.notification.classList.remove('visible'), 3000);
-            }
-            showDeleteModal() {
-                this.elements.deleteModal.style.display = 'block';
-            }
-            hideDeleteModal() {
-                this.elements.deleteModal.style.display = 'none';
-            }
+            toggleLoading(show) { this.elements.loadingSpinner.style.display = show ? 'flex' : 'none'; }
+            showNotification(message, type = 'success') { this.elements.notification.textContent = message; this.elements.notification.className = `notification ${type} visible`; setTimeout(() => this.elements.notification.classList.remove('visible'), 3000); }
+            showDeleteModal() { this.elements.deleteModal.style.display = 'block'; }
+            hideDeleteModal() { this.elements.deleteModal.style.display = 'none'; }
             updateBcvRate(rate) {
                 if (rate) {
                     this.elements.tasaBcvDiv.innerHTML = `Tasa Oficial BCV: <span>Bs. ${rate.toFixed(2)}</span>`;
@@ -567,9 +593,7 @@
                         <td data-label="Banco Receptor">${record.bancoReceptor}</td>
                         <td data-label="Referencia">${record.referencia}</td>
                         <td data-label="Acciones">
-                            ${record.puedeEliminar ? `<button class="ghost-delete" data-row-index="${record.rowIndex}">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>` : ''}
+                            ${record.puedeEliminar ? `<button class="ghost-delete" data-row-index="${record.rowIndex}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : ''}
                         </td>
                     `;
                 });
@@ -594,7 +618,6 @@
             }
         }
 
-        // Clase para gestionar datos
         class DataManager {
             constructor(ui) {
                 this.ui = ui;
@@ -602,19 +625,10 @@
                 this.currentVendedor = null;
                 this.registroToDelete = null;
             }
+            
             async loadInitialData(forceRefresh = false) {
                 try {
                     this.ui.toggleLoading(true);
-                    const isLoggedIn = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .checkLoginStatus();
-                    });
-                    if (!isLoggedIn) {
-                        window.location.href = 'Auth.html';
-                        return;
-                    }
                     await Promise.all([
                         this.loadVendedores(forceRefresh),
                         this.loadBcvRate(),
@@ -626,16 +640,24 @@
                     this.ui.toggleLoading(false);
                 }
             }
+
             async loadVendedores(forceRefresh = false) {
                 const cacheKey = 'vendedores';
                 let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
+
                 if (cachedData) {
                     this.ui.populateSelect(this.ui.elements.vendedorSelect, cachedData, 'Seleccione un vendedor');
-                    this.ui.elements.vendedorSelect.innerHTML += '<option value="Mostrar todos">Mostrar todos</option>';
+                    // Si solo hay una opción (además del placeholder), la seleccionamos
+                    if (this.ui.elements.vendedorSelect.options.length === 2) {
+                        this.ui.elements.vendedorSelect.selectedIndex = 1;
+                        this.ui.elements.vendedorSelect.dispatchEvent(new Event('change'));
+                    }
                     return;
                 }
+                
                 this.ui.elements.vendedorSelect.innerHTML = '<option disabled selected>Cargando...</option>';
                 this.ui.elements.vendedorSelect.disabled = true;
+
                 try {
                     const options = await new Promise((resolve, reject) => {
                         google.script.run
@@ -643,18 +665,26 @@
                             .withFailureHandler(reject)
                             .loadVendedores(forceRefresh);
                     });
+
                     clientCache.set(cacheKey, options);
                     this.ui.populateSelect(this.ui.elements.vendedorSelect, options, 'Seleccione un vendedor');
-                    this.ui.elements.vendedorSelect.innerHTML += '<option value="Mostrar todos">Mostrar todos</option>';
+                    
+                    // Si el usuario solo tiene un código de vendedor, lo seleccionamos por defecto.
+                    if (this.ui.elements.vendedorSelect.options.length === 2) {
+                        this.ui.elements.vendedorSelect.selectedIndex = 1;
+                        this.ui.elements.vendedorSelect.dispatchEvent(new Event('change'));
+                    }
+
                 } catch (error) {
                     this.ui.elements.vendedorSelect.innerHTML = `<option disabled>Error al cargar</option>`;
                     this.ui.showNotification(`Error al cargar vendedores: ${error.message}`, 'error');
                 }
             }
+
             async loadClientes() {
                 const vendedor = this.ui.elements.vendedorSelect.value;
                 this.currentVendedor = vendedor;
-                if (!vendedor || vendedor === 'Mostrar todos') {
+                if (!vendedor) { // Simplificado: si no hay vendedor, no hacer nada. El caso "Mostrar todos" se maneja en loadRecords.
                     this.ui.elements.clienteSelect.innerHTML = '<option disabled selected>Seleccione un cliente</option>';
                     this.ui.elements.clienteSelect.disabled = true;
                     this.ui.elements.facturaSelect.innerHTML = '<option disabled selected>Seleccione una factura</option>';
@@ -687,6 +717,7 @@
                     this.ui.toggleLoading(false);
                 }
             }
+
             async loadFacturas() {
                 const cliente = this.ui.elements.clienteSelect.value;
                 const vendedor = this.ui.elements.vendedorSelect.value;
@@ -723,12 +754,14 @@
                     this.ui.toggleLoading(false);
                 }
             }
+
             populateFacturasSelect() {
                 const optionsHtml = this.facturasPendientes.length === 0
                     ? '<option disabled>No hay facturas pendientes</option>'
                     : this.facturasPendientes.map(f => `<option value="${f.documento}">${f.documento}</option>`).join('');
                 this.ui.populateSelect(this.ui.elements.facturaSelect, optionsHtml, 'Seleccione una factura');
             }
+
             showFacturaDetails() {
                 const documento = this.ui.elements.facturaSelect.value;
                 const factura = this.facturasPendientes.find(f => f.documento === documento);
@@ -736,6 +769,7 @@
                     this.ui.showFacturaDetails(factura);
                 }
             }
+
             async loadBcvRate() {
                 try {
                     const rate = await new Promise((resolve, reject) => {
@@ -750,6 +784,7 @@
                     this.ui.showNotification(`Error al cargar tasa BCV: ${error.message}`, 'error');
                 }
             }
+
             async loadRecords(vendedor = this.currentVendedor) {
                 this.ui.elements.recordsStatus.textContent = 'Cargando registros...';
                 try {
@@ -765,6 +800,7 @@
                     this.ui.showNotification(`Error al cargar registros: ${error.message}`, 'error');
                 }
             }
+
             async submitForm() {
                 if (!this.validarFormulario()) {
                     this.ui.showNotification('Por favor, corrija los errores en el formulario.', 'error');
@@ -790,6 +826,7 @@
                     this.ui.toggleLoading(false);
                 }
             }
+
             async deleteRecord() {
                 this.ui.hideDeleteModal();
                 if (this.registroToDelete) {
@@ -810,9 +847,11 @@
                     }
                 }
             }
+
             setRegistroToDelete(rowIndex) {
                 this.registroToDelete = rowIndex;
             }
+
             clearClientCacheAndReload() {
                 clientCache.clear();
                 this.loadInitialData(true);
@@ -825,6 +864,7 @@
                     })
                     .clearScriptProperties();
             }
+
             validarFormulario() {
                 let isValid = true;
                 const fields = [
@@ -853,24 +893,13 @@
             }
         }
 
-        // Inicialización y eventos
         const uiManager = new UiManager();
         const dataManager = new DataManager(uiManager);
 
-        function logout() {
-            google.script.run
-                .withSuccessHandler(() => {
-                    uiManager.showNotification('Sesión cerrada con éxito.', 'success');
-                    window.location.href = 'Auth.html';
-                })
-                .withFailureHandler(error => {
-                    uiManager.showNotification(`Error al cerrar sesión: ${error.message}`, 'error');
-                })
-                .logoutUser();
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            dataManager.loadInitialData();
+            // **CAMBIO CLAVE**: Se fuerza la actualización de datos en cada carga de la página.
+            dataManager.loadInitialData(true);
+
             uiManager.elements.vendedorSelect.addEventListener('change', () => {
                 dataManager.loadClientes();
                 dataManager.loadRecords(uiManager.elements.vendedorSelect.value);
@@ -899,6 +928,21 @@
                     uiManager.hideDeleteModal();
                 }
             };
+
+            uiManager.elements.logoutButton.addEventListener('click', () => {
+                uiManager.elements.logoutButton.disabled = true;
+                uiManager.elements.logoutButton.textContent = 'Cerrando...';
+                google.script.run
+                    .withSuccessHandler(() => {
+                        window.top.location.href = webAppUrl;
+                    })
+                    .withFailureHandler((error) => {
+                        uiManager.showNotification(`Error al cerrar sesión: ${error.message}`, 'error');
+                        uiManager.elements.logoutButton.disabled = false;
+                        uiManager.elements.logoutButton.textContent = 'Cerrar Sesión';
+                    })
+                    .logoutUser();
+            });
         });
     </script>
 </body>

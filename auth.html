@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - Registro de Cobranzas</title>
@@ -72,6 +73,10 @@
         .button:hover {
             background-color: #1e40af;
             transform: translateY(-2px);
+        }
+        .button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
         }
         p {
             text-align: center;
@@ -156,6 +161,8 @@
         <div id="notification" class="notification"></div>
     </div>
     <script>
+        const webAppUrl = "<?!= url ?>";
+
         function showNotification(message, type = 'success') {
             const notification = document.getElementById('notification');
             notification.textContent = message;
@@ -238,15 +245,31 @@
             }
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const button = e.target.querySelector('button');
+            button.disabled = true;
+            button.textContent = 'Ingresando...';
+
             google.script.run
-                .withSuccessHandler(() => {
-                    showNotification('Inicio de sesión exitoso.', 'success');
-                    window.location.href = 'index.html';
+                .withSuccessHandler((response) => {
+                    if (response && response.status === 'SUCCESS' && response.token) {
+                        // Guardamos el token en sessionStorage para esta sesión del navegador
+                        sessionStorage.setItem('sessionToken', response.token);
+                        showNotification('Inicio de sesión exitoso. Redirigiendo...', 'success');
+                        // Redirigimos a la URL principal, pasando el token como parámetro
+                        setTimeout(() => {
+                            window.top.location.href = webAppUrl + '?token=' + response.token;
+                        }, 1000);
+                    } else {
+                        // Si la respuesta del servidor no es la esperada
+                        throw new Error('Respuesta de inicio de sesión inválida desde el servidor.');
+                    }
                 })
                 .withFailureHandler(error => {
                     showNotification(`Error al iniciar sesión: ${error.message}`, 'error');
+                    button.disabled = false;
+                    button.textContent = 'Ingresar';
                 })
-                .loginUser(email, password);
+                .processLogin(email, password); // Llamamos a la nueva función de login
         });
 
         document.getElementById('register-form').addEventListener('submit', (e) => {
@@ -258,13 +281,21 @@
             const email = document.getElementById('reg-email').value;
             const password = document.getElementById('reg-password').value;
             const name = document.getElementById('reg-name').value;
+            const button = e.target.querySelector('button');
+            button.disabled = true;
+            button.textContent = 'Registrando...';
+
             google.script.run
                 .withSuccessHandler(() => {
-                    showNotification('Cuenta creada con éxito.', 'success');
+                    showNotification('Cuenta creada con éxito. Ahora puede iniciar sesión.', 'success');
+                    button.disabled = false;
+                    button.textContent = 'Registrar';
                     showLogin();
                 })
                 .withFailureHandler(error => {
                     showNotification(`Error al registrar: ${error.message}`, 'error');
+                    button.disabled = false;
+                    button.textContent = 'Registrar';
                 })
                 .registerUser(email, password, name);
         });
