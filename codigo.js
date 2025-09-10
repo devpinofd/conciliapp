@@ -414,6 +414,110 @@ class CobranzaService {
     Logger.log(`Registro eliminado por ${userEmail}. Fila: ${rowIndex}`);
     return 'Registro eliminado y archivado con éxito.';
   }
+
+  getFilteredRecords(dateFilter, userEmail) {
+    const sheet = SheetManager.getSheet('Respuestas');
+    if (sheet.getLastRow() <= 1) return [];
+    
+    const isAdmin = this.dataFetcher.isUserAdmin(userEmail);
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    
+    // Filter by user permissions first
+    let filteredValues;
+    if (isAdmin) {
+      filteredValues = values;
+    } else {
+      const misVendedores = this.dataFetcher.fetchVendedoresFromSheetByUser(userEmail).map(v => v.codigo);
+      filteredValues = values.filter(row => misVendedores.includes(row[1]));
+    }
+    
+    // Filter by date
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    return filteredValues.filter(row => {
+      const rowDate = new Date(row[0]);
+      const rowDay = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate());
+      
+      if (dateFilter === 'hoy') {
+        return rowDay.getTime() === today.getTime();
+      } else if (dateFilter === 'ayer') {
+        return rowDay.getTime() === yesterday.getTime();
+      }
+      return false;
+    });
+  }
+
+  createXlsFile(records, dateFilter) {
+    const spreadsheet = SpreadsheetApp.create(`Cobranzas_${dateFilter}_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmm')}`);
+    const sheet = spreadsheet.getActiveSheet();
+    
+    // Set headers
+    const headers = ['Fecha', 'Vendedor', 'Código Cliente', 'Nombre Cliente', 'Factura',
+                     'Monto Pagado', 'Forma de Pago', 'Banco Emisor', 'Banco Receptor',
+                     'Nro. de Referencia', 'Tipo de Cobro', 'Fecha de Transferencia',
+                     'Observaciones', 'Usuario Creador'];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Add data
+    if (records.length > 0) {
+      const formattedRecords = records.map(row => [
+        Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm'),
+        row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], 
+        row[9], row[10], row[11], row[12], row[13]
+      ]);
+      sheet.getRange(2, 1, formattedRecords.length, headers.length).setValues(formattedRecords);
+    }
+    
+    // Style the header
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('#ffffff');
+    headerRange.setFontWeight('bold');
+    
+    // Auto-resize columns
+    sheet.autoResizeColumns(1, headers.length);
+    
+    return DriveApp.getFileById(spreadsheet.getId());
+  }
+
+  createPdfFile(records, dateFilter) {
+    const spreadsheet = SpreadsheetApp.create(`Cobranzas_PDF_${dateFilter}_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmm')}`);
+    const sheet = spreadsheet.getActiveSheet();
+    
+    // Set headers
+    const headers = ['Fecha', 'Vendedor', 'Cliente', 'Factura', 'Monto', 'Banco Emisor', 'Banco Receptor', 'Referencia'];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Add data (simplified for PDF readability)
+    if (records.length > 0) {
+      const formattedRecords = records.map(row => [
+        Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'dd/MM/yyyy'),
+        row[1], row[3], row[4], row[5], row[7], row[8], row[9]
+      ]);
+      sheet.getRange(2, 1, formattedRecords.length, headers.length).setValues(formattedRecords);
+    }
+    
+    // Style the header
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('#ffffff');
+    headerRange.setFontWeight('bold');
+    
+    // Auto-resize columns
+    sheet.autoResizeColumns(1, headers.length);
+    
+    // Convert to PDF
+    const blob = DriveApp.getFileById(spreadsheet.getId()).getBlob().getAs('application/pdf');
+    const pdfFile = DriveApp.createFile(blob.setName(`Cobranzas_${dateFilter}_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmm')}.pdf`));
+    
+    // Clean up the temporary spreadsheet
+    DriveApp.getFileById(spreadsheet.getId()).setTrashed(true);
+    
+    return pdfFile;
+  }
 }
 // #endregion
 
@@ -519,6 +623,32 @@ function obtenerRegistrosEnviados(token, vendedorFiltro) {
 function eliminarRegistro(token, rowIndex) {
   return withAuth(token, (user) => {
     return cobranzaService.deleteRecord(rowIndex, user.email);
+  });
+}
+
+function downloadRecords(token, dateFilter, format) {
+  return withAuth(token, (user) => {
+    const records = cobranzaService.getFilteredRecords(dateFilter, user.email);
+    
+    if (records.length === 0) {
+      throw new Error(`No se encontraron registros para ${dateFilter === 'hoy' ? 'hoy' : 'ayer'}.`);
+    }
+    
+    let file;
+    if (format === 'xls') {
+      file = cobranzaService.createXlsFile(records, dateFilter);
+    } else if (format === 'pdf') {
+      file = cobranzaService.createPdfFile(records, dateFilter);
+    } else {
+      throw new Error('Formato no válido. Use "xls" o "pdf".');
+    }
+    
+    // Return the download URL
+    return {
+      type: 'url',
+      url: file.getDownloadUrl(),
+      filename: file.getName()
+    };
   });
 }
 

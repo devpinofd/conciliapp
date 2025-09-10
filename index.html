@@ -448,6 +448,31 @@
 
     <div class="records-container">
         <header class="records-header">
+            <h2>Descarga de Registros</h2>
+        </header>
+        <main class="records-body">
+            <div class="form-section">
+                <label for="date-filter">Filtro de fecha:</label>
+                <select id="date-filter" name="dateFilter">
+                    <option value="hoy">Hoy</option>
+                    <option value="ayer">Ayer</option>
+                </select>
+            </div>
+            <div class="form-section">
+                <label for="format-selector">Formato de descarga:</label>
+                <select id="format-selector" name="formatSelector">
+                    <option value="xls">Excel (XLS)</option>
+                    <option value="pdf">PDF</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button id="download-btn" class="button button-primary">Descargar</button>
+            </div>
+        </main>
+    </div>
+
+    <div class="records-container">
+        <header class="records-header">
             <h2>Registros Enviados Recientemente</h2>
             <div id="tasa-bcv"></div>
         </header>
@@ -852,6 +877,44 @@
                 });
                 return isValid;
             }
+            async downloadRecords() {
+                const dateFilter = document.getElementById('date-filter').value;
+                const format = document.getElementById('format-selector').value;
+                
+                this.ui.toggleLoading(true);
+                try {
+                    const response = await new Promise((resolve, reject) => {
+                        google.script.run
+                            .withSuccessHandler(resolve)
+                            .withFailureHandler(reject)
+                            .downloadRecords(sessionToken, dateFilter, format);
+                    });
+                    
+                    // Handle different response types
+                    if (response.type === 'url') {
+                        // For Google Drive files, open the URL
+                        window.open(response.url, '_blank');
+                    } else {
+                        // For direct data, create a blob and download
+                        const mimeType = format === 'pdf' ? 'application/pdf' : 'application/vnd.ms-excel';
+                        const blob = new Blob([response.data], { type: mimeType });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }
+                    
+                    this.ui.showNotification('Archivo descargado exitosamente', 'success');
+                } catch (error) {
+                    this.ui.showNotification(`Error al descargar: ${error.message}`, 'error');
+                } finally {
+                    this.ui.toggleLoading(false);
+                }
+            }
         }
 
         // Inicialización y eventos
@@ -884,6 +947,9 @@
             document.getElementById('refresh-data-btn').addEventListener('click', () => {
                 dataManager.clearClientCacheAndReload();
                 uiManager.showNotification('Datos actualizados.', 'success');
+            });
+            document.getElementById('download-btn').addEventListener('click', () => {
+                dataManager.downloadRecords();
             });
             uiManager.elements.confirmDeleteBtn.addEventListener('click', () => dataManager.deleteRecord());
             // *** CORRECCIÓN DEL ERROR ***
