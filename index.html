@@ -881,6 +881,11 @@
                 const dateFilter = document.getElementById('date-filter').value;
                 const format = document.getElementById('format-selector').value;
                 
+                if (!dateFilter || !format) {
+                    this.ui.showNotification('Por favor seleccione filtro de fecha y formato', 'error');
+                    return;
+                }
+                
                 this.ui.toggleLoading(true);
                 try {
                     const response = await new Promise((resolve, reject) => {
@@ -908,7 +913,8 @@
                         URL.revokeObjectURL(url);
                     }
                     
-                    this.ui.showNotification('Archivo descargado exitosamente', 'success');
+                    const dateText = dateFilter === 'hoy' ? 'hoy' : 'ayer';
+                    this.ui.showNotification(`Archivo ${format.toUpperCase()} para ${dateText} descargado exitosamente`, 'success');
                 } catch (error) {
                     this.ui.showNotification(`Error al descargar: ${error.message}`, 'error');
                 } finally {

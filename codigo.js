@@ -487,27 +487,38 @@ class CobranzaService {
     const spreadsheet = SpreadsheetApp.create(`Cobranzas_PDF_${dateFilter}_${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmm')}`);
     const sheet = spreadsheet.getActiveSheet();
     
+    // Set title
+    sheet.getRange(1, 1).setValue(`Registros de Cobranzas - ${dateFilter === 'hoy' ? 'Hoy' : 'Ayer'}`);
+    sheet.getRange(1, 1).setFontSize(16).setFontWeight('bold');
+    
     // Set headers
     const headers = ['Fecha', 'Vendedor', 'Cliente', 'Factura', 'Monto', 'Banco Emisor', 'Banco Receptor', 'Referencia'];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(3, 1, 1, headers.length).setValues([headers]);
     
     // Add data (simplified for PDF readability)
     if (records.length > 0) {
       const formattedRecords = records.map(row => [
         Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'dd/MM/yyyy'),
-        row[1], row[3], row[4], row[5], row[7], row[8], row[9]
+        row[1], row[3], row[4], 
+        `$${parseFloat(row[5]).toFixed(2)}`, 
+        row[7], row[8], row[9]
       ]);
-      sheet.getRange(2, 1, formattedRecords.length, headers.length).setValues(formattedRecords);
+      sheet.getRange(4, 1, formattedRecords.length, headers.length).setValues(formattedRecords);
     }
     
     // Style the header
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    const headerRange = sheet.getRange(3, 1, 1, headers.length);
     headerRange.setBackground('#4285f4');
     headerRange.setFontColor('#ffffff');
     headerRange.setFontWeight('bold');
     
     // Auto-resize columns
     sheet.autoResizeColumns(1, headers.length);
+    
+    // Add summary
+    const summaryRow = 4 + records.length + 1;
+    sheet.getRange(summaryRow, 1).setValue(`Total de registros: ${records.length}`);
+    sheet.getRange(summaryRow, 1).setFontWeight('bold');
     
     // Convert to PDF
     const blob = DriveApp.getFileById(spreadsheet.getId()).getBlob().getAs('application/pdf');
@@ -628,27 +639,43 @@ function eliminarRegistro(token, rowIndex) {
 
 function downloadRecords(token, dateFilter, format) {
   return withAuth(token, (user) => {
+    // Validate inputs
+    if (!dateFilter || !['hoy', 'ayer'].includes(dateFilter)) {
+      throw new Error('Filtro de fecha inválido. Use "hoy" o "ayer".');
+    }
+    
+    if (!format || !['xls', 'pdf'].includes(format)) {
+      throw new Error('Formato inválido. Use "xls" o "pdf".');
+    }
+    
     const records = cobranzaService.getFilteredRecords(dateFilter, user.email);
     
     if (records.length === 0) {
-      throw new Error(`No se encontraron registros para ${dateFilter === 'hoy' ? 'hoy' : 'ayer'}.`);
+      const dateText = dateFilter === 'hoy' ? 'hoy' : 'ayer';
+      throw new Error(`No se encontraron registros de cobranzas para ${dateText}.`);
     }
     
     let file;
-    if (format === 'xls') {
-      file = cobranzaService.createXlsFile(records, dateFilter);
-    } else if (format === 'pdf') {
-      file = cobranzaService.createPdfFile(records, dateFilter);
-    } else {
-      throw new Error('Formato no válido. Use "xls" o "pdf".');
+    try {
+      if (format === 'xls') {
+        file = cobranzaService.createXlsFile(records, dateFilter);
+      } else if (format === 'pdf') {
+        file = cobranzaService.createPdfFile(records, dateFilter);
+      }
+      
+      Logger.log(`Usuario ${user.email} descargó ${records.length} registros en formato ${format.toUpperCase()} para ${dateFilter}`);
+      
+      // Return the download URL
+      return {
+        type: 'url',
+        url: file.getDownloadUrl(),
+        filename: file.getName(),
+        recordCount: records.length
+      };
+    } catch (error) {
+      Logger.error(`Error generando archivo ${format} para ${user.email}: ${error.message}`);
+      throw new Error(`Error al generar el archivo ${format.toUpperCase()}. Intente nuevamente.`);
     }
-    
-    // Return the download URL
-    return {
-      type: 'url',
-      url: file.getDownloadUrl(),
-      filename: file.getName()
-    };
   });
 }
 
