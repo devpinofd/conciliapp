@@ -595,6 +595,8 @@
                         })
                         .withFailureHandler((error) => {
                             console.error('Error al obtener estado de mantenimiento:', error);
+                            // En caso de error, aplicar estado seguro (sin mantenimiento)
+                            this.applyMaintenanceStatus({ enabled: false });
                             reject(error);
                         })
                         .getMaintenanceStatus();
@@ -828,7 +830,15 @@
                     this.ui.showNotification(response, 'success');
                     this.ui.resetForm();
                     await this.loadRecords(this.currentVendedor, true);
-                } catch (error) { this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
+                } catch (error) { 
+                    // Verificar si el error es por mantenimiento
+                    if (error.message && error.message.includes('mantenimiento')) {
+                        this.ui.showNotification(`Error: ${error.message}`, 'error');
+                        // Actualizar estado de mantenimiento si cambió
+                        maintenanceUI.checkMaintenanceStatus().catch(console.error);
+                    } else {
+                        this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
+                    }
                 } finally { this.ui.toggleLoading(false); }
             }
             async deleteRecord() {
@@ -854,7 +864,15 @@
                         const response = await this.runGoogleScript('eliminarRegistro', sessionToken, this.registroToDelete);
                         this.ui.showNotification(response, 'success');
                         await this.loadRecords(this.currentVendedor, true);
-                    } catch (error) { this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
+                    } catch (error) { 
+                        // Verificar si el error es por mantenimiento
+                        if (error.message && error.message.includes('mantenimiento')) {
+                            this.ui.showNotification(`Error: ${error.message}`, 'error');
+                            // Actualizar estado de mantenimiento si cambió
+                            maintenanceUI.checkMaintenanceStatus().catch(console.error);
+                        } else {
+                            this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
+                        }
                     } finally { this.ui.toggleLoading(false); }
                 }
             }
