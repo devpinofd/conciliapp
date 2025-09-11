@@ -61,6 +61,22 @@ class CacheManager {
   }
 }
 
+class ConfigManager {
+  static getRegistrosPorPagina() {
+    const props = PropertiesService.getScriptProperties();
+    let registrosPorPagina = props.getProperty('REGISTROS_POR_PAGINA');
+    
+    // Validar que REGISTROS_POR_PAGINA esté configurada en 20; si no es así, setear su valor en 20
+    if (!registrosPorPagina || parseInt(registrosPorPagina) !== 20) {
+      props.setProperty('REGISTROS_POR_PAGINA', '20');
+      Logger.log('REGISTROS_POR_PAGINA configurado en 20');
+      return 20;
+    }
+    
+    return parseInt(registrosPorPagina);
+  }
+}
+
 class ApiHandler {
   constructor() {
     const props = PropertiesService.getScriptProperties();
@@ -330,25 +346,25 @@ class CobranzaService {
       return data;
     }
 
-    return CacheManager.get(cacheKey, 3600, fetchFunction);
+    return CacheManager.get(cacheKey, 21600, fetchFunction);
   }
 
   getClientesHtml(codVendedor) {
     const clientes = CacheManager.get(
-      `clientes_${codVendedor}`, 3600, () => this.dataFetcher.fetchClientesFromApi(codVendedor)
+      `clientes_${codVendedor}`, 21600, () => this.dataFetcher.fetchClientesFromApi(codVendedor)
     );
     return clientes.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join('');
   }
 
   getFacturas(codVendedor, codCliente) {
     const facturas = CacheManager.get(
-      `facturas_${codVendedor}_${codCliente}`, 3600, () => this.dataFetcher.fetchFacturasFromApi(codVendedor, codCliente)
+      `facturas_${codVendedor}_${codCliente}`, 21600, () => this.dataFetcher.fetchFacturasFromApi(codVendedor, codCliente)
     );
     return facturas;
   }
 
   getBcvRate() {
-    return CacheManager.get('bcv_rate', 3600, () => this.dataFetcher.fetchBcvRate());
+    return CacheManager.get('bcv_rate', 21600, () => this.dataFetcher.fetchBcvRate());
   }
 
   getBancos() {
