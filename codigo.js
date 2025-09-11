@@ -289,14 +289,13 @@ class DataFetcher {
 class CobranzaService {
   constructor(dataFetcher) {
     this.dataFetcher = dataFetcher;
+    this.REGISTROS_POR_PAGINA = 20; // Límite de registros a cargar
   }
 
-  // Obtenemos el email del usuario que ejecuta el script, no de la sesión web.
   static get scriptUserEmail() {
     return Session.getActiveUser().getEmail();
   }
 
-  // El email del usuario logueado en la app. Se debe pasar como parámetro.
   getVendedores(userEmail, forceRefresh = false) {
     if (!userEmail) {
       throw new Error("No se pudo obtener el email del usuario para cargar los vendedores.");
@@ -308,10 +307,8 @@ class CobranzaService {
     const fetchFunction = () => {
         let vendedores;
         if (isAdmin) {
-            Logger.log(`Usuario ${userEmail} es administrador. Obteniendo todos los vendedores.`);
             vendedores = this.dataFetcher.fetchAllVendedoresFromSheet();
         } else {
-            Logger.log(`Usuario ${userEmail} es un vendedor. Obteniendo sus vendedores asignados.`);
             vendedores = this.dataFetcher.fetchVendedoresFromSheetByUser(userEmail);
         }
 
@@ -334,17 +331,12 @@ class CobranzaService {
   }
 
   getClientesHtml(codVendedor) {
-    const clientes = CacheManager.get(
-      `clientes_${codVendedor}`, 3600, () => this.dataFetcher.fetchClientesFromApi(codVendedor)
-    );
+    const clientes = CacheManager.get(`clientes_${codVendedor}`, 3600, () => this.dataFetcher.fetchClientesFromApi(codVendedor));
     return clientes.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join('');
   }
 
   getFacturas(codVendedor, codCliente) {
-    const facturas = CacheManager.get(
-      `facturas_${codVendedor}_${codCliente}`, 3600, () => this.dataFetcher.fetchFacturasFromApi(codVendedor, codCliente)
-    );
-    return facturas;
+    return CacheManager.get(`facturas_${codVendedor}_${codCliente}`, 3600, () => this.dataFetcher.fetchFacturasFromApi(codVendedor, codCliente));
   }
 
   getBcvRate() {
@@ -365,8 +357,13 @@ class CobranzaService {
     if (existingReferences.includes(data.nroReferencia)) {
       throw new Error('El número de referencia ya existe.');
     }
+
+    const todosLosVendedores = this.dataFetcher.fetchAllVendedoresFromSheet();
+    const vendedorEncontrado = todosLosVendedores.find(v => v.codigo === data.vendedor);
+    const nombreCompletoVendedor = vendedorEncontrado ? vendedorEncontrado.nombre : data.vendedor;
+
     const row = [
-      new Date(), data.vendedor, data.cliente, data.nombreCliente, data.factura,
+      new Date(), nombreCompletoVendedor, data.cliente, data.nombreCliente, data.factura,
       parseFloat(data.montoPagado), data.formaPago, data.bancoEmisor, data.bancoReceptor,
       data.nroReferencia, data.tipoCobro, data.fechaTransferenciaPago, data.observaciones, userEmail
     ];
@@ -377,27 +374,55 @@ class CobranzaService {
 
   getRecentRecords(vendedor, userEmail) {
     const sheet = SheetManager.getSheet('Respuestas');
-    if (sheet.getLastRow() <= 1) return [];
-    
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // Calcular el rango para leer solo los últimos N registros
+    const startRow = Math.max(2, lastRow - this.REGISTROS_POR_PAGINA + 1);
+    const numRows = lastRow - startRow + 1;
+    const range = sheet.getRange(startRow, 1, numRows, sheet.getLastColumn());
+    const values = range.getValues();
+
     const isAdmin = this.dataFetcher.isUserAdmin(userEmail);
-    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
     let filteredValues;
 
     if (isAdmin) {
-        filteredValues = vendedor && vendedor !== 'Mostrar todos' ? values.filter(row => row[1] === vendedor) : values;
+        const todosLosVendedores = this.dataFetcher.fetchAllVendedoresFromSheet();
+        const vendedorSeleccionado = todosLosVendedores.find(v => v.codigo === vendedor);
+        const nombreVendedorFiltro = vendedorSeleccionado ? vendedorSeleccionado.nombre : null;
+
+        filteredValues = vendedor && vendedor !== 'Mostrar todos' 
+            ? values.filter(row => row[1] === nombreVendedorFiltro) 
+            : values;
     } else {
-        const misVendedores = this.dataFetcher.fetchVendedoresFromSheetByUser(userEmail).map(v => v.codigo);
+        const misVendedores = this.dataFetcher.fetchVendedoresFromSheetByUser(userEmail).map(v => v.nombre);
         filteredValues = values.filter(row => misVendedores.includes(row[1]));
     }
     
-    return filteredValues.reverse().map((row) => {
-      const originalIndex = values.findIndex(originalRow => originalRow.every((val, i) => val === row[i])) + 2;
+    const now = new Date().getTime();
+    const FIVE_MINUTES_IN_MS = 5 * 60 * 1000;
+
+    // Los datos ya vienen ordenados por fecha (los más nuevos al final), así que los invertimos
+    return filteredValues.reverse().map((row, index) => {
+      const timestamp = new Date(row[0]).getTime();
+      const ageInMs = now - timestamp;
+      const puedeEliminarPorTiempo = ageInMs < FIVE_MINUTES_IN_MS;
+      
+      // El índice original en la hoja de cálculo
+      const originalIndex = startRow + (numRows - 1 - index);
+
       return {
-        rowIndex: originalIndex, fechaEnvio: Utilities.formatDate(row[0], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm'),
-        vendedor: row[1], clienteNombre: row[3], factura: row[4],
+        rowIndex: originalIndex,
+        fechaEnvio: Utilities.formatDate(new Date(row[0]), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm'),
+        vendedor: row[1],
+        clienteNombre: row[3],
+        factura: row[4],
         monto: (typeof row[5] === 'number') ? row[5].toFixed(2) : row[5],
-        bancoEmisor: row[7], bancoReceptor: row[8], referencia: row[9], creadoPor: row[13],
-        puedeEliminar: (row[13] === userEmail)
+        bancoEmisor: row[7],
+        bancoReceptor: row[8],
+        referencia: row[9],
+        creadoPor: row[13],
+        puedeEliminar: (row[13] === userEmail && puedeEliminarPorTiempo)
       };
     });
   }
@@ -405,9 +430,20 @@ class CobranzaService {
   deleteRecord(rowIndex, userEmail) {
     const sheet = SheetManager.getSheet('Respuestas');
     const rowToDelete = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
     if (rowToDelete[13] !== userEmail) {
       throw new Error('No tienes permiso para eliminar este registro.');
     }
+
+    const timestamp = new Date(rowToDelete[0]).getTime();
+    const now = new Date().getTime();
+    const ageInMs = now - timestamp;
+    const FIVE_MINUTES_IN_MS = 5 * 60 * 1000;
+
+    if (ageInMs > FIVE_MINUTES_IN_MS) {
+        throw new Error('No se puede eliminar un registro después de 5 minutos de su creación.');
+    }
+
     const auditSheet = SheetManager.getSheet('Registros Eliminados');
     auditSheet.appendRow([new Date(), userEmail, ...rowToDelete]);
     sheet.deleteRow(rowIndex);
@@ -424,31 +460,24 @@ function getWebAppUrl() {
   return ScriptApp.getService().getUrl();
 }
 
-/**
- * Función principal que se ejecuta al cargar la aplicación web.
- * Ahora valida un token de sesión para decidir qué página mostrar.
- * @param {object} e El objeto de evento de la solicitud GET.
- */
 function doGet(e) {
   const token = e.parameter.token;
   const url = getWebAppUrl();
   let user = null;
 
   if (token) {
-    user = checkAuth(token); // Llama a la función de validación de token en auth.js
+    user = checkAuth(token);
   }
 
   if (user) {
-    // Si el token es válido y tenemos un usuario, muestra la página principal.
     const template = HtmlService.createTemplateFromFile('Index');
     template.user = user;
     template.url = url;
-    template.token = token; // Pasamos el token a la página principal
+    template.token = token;
     return template.evaluate()
       .setTitle('Registro de Cobranzas')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
   } else {
-    // Si no hay token o no es válido, muestra la página de login.
     const template = HtmlService.createTemplateFromFile('Auth');
     template.url = url;
     return template.evaluate()
@@ -461,7 +490,6 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-// Las funciones públicas ahora deben validar el token
 function withAuth(token, action) {
   const user = checkAuth(token);
   if (!user) {
@@ -471,15 +499,12 @@ function withAuth(token, action) {
 }
 
 function loadVendedores(token, forceRefresh) {
-  return withAuth(token, (user) => {
-    return cobranzaService.getVendedores(user.email, forceRefresh);
-  });
+  return withAuth(token, (user) => cobranzaService.getVendedores(user.email, forceRefresh));
 }
 
 function cargarClientesEnPregunta1(token, codVendedor) {
   return withAuth(token, () => {
     if (!codVendedor) {
-      Logger.log('Advertencia: codVendedor no proporcionado a cargarClientesEnPregunta1.');
       return '<option value="" disabled selected>Seleccione un cliente</option>';
     }
     return cobranzaService.getClientesHtml(codVendedor);
@@ -487,48 +512,35 @@ function cargarClientesEnPregunta1(token, codVendedor) {
 }
 
 function obtenerFacturas(token, codVendedor, codCliente) {
-  return withAuth(token, () => {
-    return cobranzaService.getFacturas(codVendedor, codCliente);
-  });
+  return withAuth(token, () => cobranzaService.getFacturas(codVendedor, codCliente));
 }
 
 function obtenerTasaBCV(token) {
-  return withAuth(token, () => {
-    return cobranzaService.getBcvRate();
-  });
+  return withAuth(token, () => cobranzaService.getBcvRate());
 }
 
 function obtenerBancos(token) {
-  return withAuth(token, () => {
-    return cobranzaService.getBancos();
-  });
+  return withAuth(token, () => cobranzaService.getBancos());
 }
 
 function enviarDatos(token, datos) {
-  return withAuth(token, (user) => {
-    return cobranzaService.submitData(datos, user.email);
-  });
+  return withAuth(token, (user) => cobranzaService.submitData(datos, user.email));
 }
 
 function obtenerRegistrosEnviados(token, vendedorFiltro) {
-  return withAuth(token, (user) => {
-    return cobranzaService.getRecentRecords(vendedorFiltro, user.email);
-  });
+  return withAuth(token, (user) => cobranzaService.getRecentRecords(vendedorFiltro, user.email));
 }
 
 function eliminarRegistro(token, rowIndex) {
-  return withAuth(token, (user) => {
-    return cobranzaService.deleteRecord(rowIndex, user.email);
-  });
+  return withAuth(token, (user) => cobranzaService.deleteRecord(rowIndex, user.email));
 }
 
-// Las funciones sin autenticación no necesitan cambios
 function sincronizarVendedoresDesdeApi() {
   const dataFetcher = new DataFetcher();
   const api = dataFetcher.api;
   const sheet = SheetManager.getSheet('obtenerVendedoresPorUsuario');
   
-  const query = `SELECT TRIM(correo) AS correo, TRIM(cod_ven) AS codvendedor, CONCAT(TRIM(cod_ven), '-', TRIM(nom_ven)) AS vendedor_completo FROM vendedores;`;
+  const query = `SELECT TRIM(correo) AS correo, TRIM(cod_ven) AS codvendedor, CONCAT(TRIM(cod_ven), '-', TRIM(nom_ven)) AS vendedor_completo FROM vendedores where status='A';`;
   const vendedores = api.fetchData(query);
   
   if (vendedores && vendedores.length > 0) {
@@ -584,20 +596,11 @@ function conservarPrimerasPropiedades() {
   var todasLasClaves = propiedades.getKeys();
   todasLasClaves.sort();
 
-  Logger.log('Lista de propiedades antes de eliminar (ordenadas):');
-  todasLasClaves.forEach(function(clave, indice) {
-    var estado = (indice <= ultimoIndiceAConservar) ? 'Se conservará' : 'Se eliminará';
-    Logger.log('%s: %s (%s)', indice, clave, estado);
-  });
-
   todasLasClaves.forEach(function(clave, indice) {
     if (indice > ultimoIndiceAConservar) {
       propiedades.deleteProperty(clave);
-      Logger.log('ÉXITO: Se eliminó la propiedad en el índice %s (clave: "%s").', indice, clave);
     }
   });
-
-  Logger.log('¡Proceso completado! Solo se conservaron las primeras %s propiedades.', ultimoIndiceAConservar + 1);
 }
 
 function crearTriggerConservarPropiedades() {

@@ -3,35 +3,53 @@
 <head>
     <base target="_top">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulario de Cobranzas</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark-color: #1e40af;
+            --danger-color: #ef4444;
+            --danger-dark-color: #dc2626;
+            --background-light: #f0f9ff;
+            --background-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-light: #334155;
+            --border-color: #cbd5e1;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
         body {
             font-family: 'Roboto', Arial, sans-serif;
-            background-color: #f0f9ff;
+            background-color: var(--background-light);
             margin: 0;
-            padding: 20px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 1200px;
         }
         .app-header {
             width: 100%;
-            max-width: 1200px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #fff;
+            flex-wrap: wrap;
+            gap: 16px;
+            background-color: var(--background-card);
             padding: 16px 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px var(--shadow-color);
             box-sizing: border-box;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         .app-header h2 {
-            color: #0f172a;
+            color: var(--text-dark);
             font-size: 20px;
             margin: 0;
         }
@@ -42,74 +60,77 @@
         }
         .user-info span {
             font-weight: 500;
-            color: #334155;
+            color: var(--text-light);
         }
-        .form-container, .records-container {
-            background: linear-gradient(180deg, #ffffff, #f1f5f9);
-            max-width: 1200px;
+        .card {
+            background: var(--background-card);
             width: 100%;
-            margin: 20px 0;
+            margin-bottom: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px var(--shadow-color);
             transition: transform 0.2s ease-in-out;
         }
-        .form-container:hover, .records-container:hover {
+        .card:hover {
             transform: translateY(-2px);
         }
-        .form-header, .records-header {
+        .card-header {
             background: linear-gradient(90deg, #1d4ed8, #3b82f6);
             color: #ffffff;
-            padding: 28px;
-            text-align: center;
-            border-bottom: 4px solid #1e40af;
+            padding: 24px;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
         }
-        .form-body, .records-body {
-            padding: 28px;
+        .card-body {
+            padding: 24px;
         }
         h1, h2, h3 {
             margin: 0;
             font-weight: 600;
         }
-        .form-section {
-            margin-bottom: 28px;
+        .tasa-oficial-text {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 16px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .form-grid-item {
+            display: flex;
+            flex-direction: column;
         }
         label {
-            display: block;
-            margin-bottom: 10px;
-            color: #0f172a;
+            margin-bottom: 8px;
+            color: var(--text-dark);
             font-weight: 500;
             font-size: 15px;
         }
-        input[type="text"],
-        input[type="number"],
-        input[type="date"],
-        textarea,
-        select {
+        input, textarea, select {
             width: 100%;
-            padding: 14px;
-            border: 1px solid #cbd5e1;
+            padding: 12px;
+            border: 1px solid var(--border-color);
             border-radius: 6px;
             box-sizing: border-box;
             font-size: 16px;
-            background-color: #ffffff;
+            background-color: var(--background-card);
             transition: border-color 0.3s, box-shadow 0.3s;
         }
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        input[type="date"]:focus,
-        textarea:focus,
-        select:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
-            border-color: #2563eb;
+            border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
         .form-actions {
             display: flex;
             justify-content: flex-end;
-            margin-top: 28px;
+            margin-top: 24px;
         }
         .button {
-            padding: 14px 28px;
+            padding: 12px 24px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -117,371 +138,246 @@
             font-weight: 500;
             transition: background-color 0.3s, transform 0.1s, box-shadow 0.2s;
         }
-        .button-primary {
-            background-color: #2563eb;
-            color: #ffffff;
-        }
-        .button-primary:hover {
-            background-color: #1e40af;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-        .button-danger {
-            background-color: #ef4444;
-            color: #ffffff;
-        }
-        .button-danger:hover {
-            background-color: #dc2626;
-            transform: translateY(-2px);
-        }
-        .button-secondary {
-            background-color: #f1f5f9;
-            color: #0f172a;
-        }
-        .button-secondary:hover {
-            background-color: #cbd5e1;
-            transform: translateY(-2px);
-        }
-        .ghost-delete svg {
-            width: 22px;
-            height: 22px;
-            fill: #ef4444;
-            transition: fill 0.3s;
-        }
-        .ghost-delete:hover svg {
-            fill: #dc2626;
-        }
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #10b981;
-            color: #ffffff;
-            padding: 16px 24px;
+        .button-primary { background-color: var(--primary-color); color: #ffffff; }
+        .button-primary:hover { background-color: var(--primary-dark-color); transform: translateY(-2px); }
+        .button-danger { background-color: var(--danger-color); color: #ffffff; }
+        .button-danger:hover { background-color: var(--danger-dark-color); transform: translateY(-2px); }
+        .button-secondary { background-color: #e2e8f0; color: var(--text-dark); }
+        .button-secondary:hover { background-color: var(--border-color); transform: translateY(-2px); }
+        
+        .notification { position: fixed; top: 20px; right: 20px; background-color: #10b981; color: #ffffff; padding: 16px; border-radius: 8px; box-shadow: 0 4px 12px var(--shadow-color); z-index: 1001; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; }
+        .notification.visible { opacity: 1; transform: translateY(0); }
+        .notification.error { background-color: var(--danger-color); }
+
+        .factura-details { margin-top: 10px; padding: 12px; background-color: #f8fafc; border-left: 4px solid var(--primary-color); border-radius: 4px; font-size: 14px; color: var(--text-light); display: none; }
+        
+        .records-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .records-table { display: block; }
+        .records-table thead { display: none; }
+        .records-table tbody, .records-table tr { display: block; }
+        .records-table tr {
+            background-color: var(--background-card);
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-            transform: translateY(-100px);
-            opacity: 0;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        .notification.visible {
-            transform: translateY(0);
-            opacity: 1;
-        }
-        .notification.error {
-            background-color: #ffffff;
-        }
-        .factura-details {
-            margin-top: 10px;
-            padding: 14px;
-            background-color: #f8fafc;
-            border-left: 4px solid #2563eb;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #475569;
-            display: none;
-        }
-        .records-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .records-table th, .records-table td {
-            padding: 14px;
-            text-align: left;
-            border-bottom: 1px solid #dbeafe;
-        }
-        .records-table th {
-            background-color: #f1f5f9;
-            font-weight: 600;
-            color: #0f172a;
-        }
-        .records-table tr:hover {
-            background-color: #f8fafc;
-        }
-        @media screen and (max-width: 768px) {
-            .records-table thead {
-                display: none;
-            }
-            .records-table, .records-table tbody, .records-table tr, .records-table td {
-                display: block;
-                width: 100%;
-            }
-            .records-table tr {
-                margin-bottom: 20px;
-                border: 1px solid #dbeafe;
-                border-radius: 8px;
-                overflow: hidden;
-            }
-            .records-table td {
-                text-align: right;
-                padding-left: 50%;
-                position: relative;
-                border: none;
-                border-bottom: 1px solid #f1f5f9;
-            }
-            .records-table td:before {
-                content: attr(data-label);
-                position: absolute;
-                left: 14px;
-                width: 45%;
-                text-align: left;
-                font-weight: 500;
-                color: #475569;
-            }
-            .form-actions {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .button {
-                width: 100%;
-            }
-        }
-        .loading-spinner-container {
-            display: none;
-            position: fixed;
-            z-index: 1001;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+        .records-table td {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
         }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #2563eb;
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            animation: spin 1s linear infinite;
+        .records-table td:last-child { border-bottom: none; }
+        .records-table td::before {
+            content: attr(data-label);
+            font-weight: 500;
+            color: var(--text-light);
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-        .modal-content {
-            background: linear-gradient(180deg, #ffffff, #f1f5f9);
-            margin: 15% auto;
-            padding: 28px;
-            border: 1px solid #dbeafe;
-            width: 80%;
-            max-width: 400px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            text-align: center;
-        }
-        .modal-buttons {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-        }
-        #tasa-bcv {
-            text-align: center;
-            font-size: 15px;
-            color: #ffffff;
-            margin-bottom: 20px;
-        }
-        #tasa-bcv span {
-            font-weight: 600;
-            color: #ffffff;
-        }
-        #refresh-button-container {
-            text-align: right;
-            margin-bottom: 12px;
-        }
-        .error {
-            color: #ef4444;
-            font-size: 14px;
-            margin-top: -10px;
-            margin-bottom: 10px;
-            display: none;
+        .ghost-delete { background: none; border: none; cursor: pointer; padding: 4px; }
+        .ghost-delete svg { width: 22px; height: 22px; fill: var(--danger-color); transition: fill 0.3s; }
+        .ghost-delete:hover svg { fill: var(--danger-dark-color); }
+
+        .loading-spinner-container { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; }
+        .spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid var(--primary-color); border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.6); }
+        .modal-content { background-color: var(--background-card); margin: 40% auto; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; }
+        .modal-buttons { display: flex; justify-content: center; gap: 16px; margin-top: 20px; }
+        
+        .error { color: var(--danger-color); font-size: 14px; margin-top: 4px; display: none; }
+
+        /* Tablet and Desktop Styles */
+        @media screen and (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .form-grid-full-width {
+                grid-column: 1 / -1;
+            }
+            .records-table { display: table; width: 100%; border-collapse: collapse; }
+            .records-table thead { display: table-header-group; }
+            .records-table tbody { display: table-row-group; }
+            .records-table tr { display: table-row; background: none; border: none; box-shadow: none; padding: 0; margin: 0; }
+            .records-table tr:nth-child(even) { background-color: #f8fafc; }
+            .records-table tr:hover { background-color: #f1f5f9; }
+            .records-table th, .records-table td { display: table-cell; padding: 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+            .records-table td::before { display: none; }
+            .modal-content { margin: 15% auto; }
         }
     </style>
 </head>
 <body>
     <div id="notification" class="notification"></div>
-    <div id="loading-spinner" class="loading-spinner-container">
-        <div class="spinner"></div>
-    </div>
+    <div id="loading-spinner" class="loading-spinner-container"><div class="spinner"></div></div>
 
-    <header class="app-header">
-        <h2>Bienvenido, <?!= user.name ?></h2>
-        <div class="user-info">
-            <span>(<?!= user.email ?>)</span>
-            <button id="logout-button" class="button button-danger">Cerrar Sesión</button>
-        </div>
-    </header>
-
-    <div class="form-container">
-        <header class="form-header">
-            <h1>Registro de Cobranzas</h1>
-        </header>
-        <div style="text-align: center; margin-bottom: 20px;">
-            <p id="tasa-oficial" class="tasa-oficial-text">Cargando...</p>
-        </div>
-        <main class="form-body">
-            <form id="formulario">
-                <div class="form-section">
-                    <label for="vendedor">Seleccione el vendedor:</label>
-                    <select id="vendedor" name="vendedor" required>
-                        <option value="" disabled selected>Cargando vendedores...</option>
-                    </select>
-                    <span id="vendedorError" class="error">Por favor, seleccione un vendedor.</span>
-                </div>
-                <div class="form-section">
-                    <label for="cliente">Seleccione el cliente:</label>
-                    <select id="cliente" name="cliente" required disabled>
-                        <option value="" disabled selected>Seleccione un cliente</option>
-                    </select>
-                    <span id="clienteError" class="error">Por favor, seleccione un cliente.</span>
-                </div>
-                <div class="form-section">
-                    <label for="factura">Seleccione la factura:</label>
-                    <select id="factura" name="factura" required disabled>
-                        <option value="" disabled selected>Seleccione una factura</option>
-                    </select>
-                    <div id="factura-details" class="factura-details"></div>
-                    <span id="facturaError" class="error">Por favor, seleccione una factura.</span>
-                </div>
-                <div class="form-section">
-                    <label for="monto-pagado">Monto pagado:</label>
-                    <input type="number" id="monto-pagado" name="montoPagado" step="0.01" min="0.01" required>
-                    <span id="montoError" class="error">El monto debe ser mayor a 0.</span>
-                </div>
-                <div class="form-section">
-                    <label for="forma-pago">Forma de Pago:</label>
-                    <select id="forma-pago" name="formaPago" required>
-                        <option value="" disabled selected>Seleccione...</option>
-                        <option value="Transferencia">Transferencia</option>
-                        <option value="Pago Móvil">Pago Móvil</option>
-                        <option value="Efectivo $">Efectivo $</option>
-                        <option value="Zelle">Zelle</option>
-                    </select>
-                    <span id="formaPagoError" class="error">Por favor, seleccione una forma de pago.</span>
-                </div>
-                <div class="form-section">
-                    <label for="banco_emisor">Banco Emisor:</label>
-                    <select id="banco_emisor" name="bancoEmisor" required>
-                        <option value="" disabled selected>Seleccione un banco</option>
-                        <option value="NO APLICA">NO APLICA</option>
-                        <option value="100% banco (0156)">100% banco (0156)</option>
-                        <option value="Activo (0171)">Activo (0171)</option>
-                        <option value="Banca amiga (0172)">Banca amiga (0172)</option>
-                        <option value="Bancaribe (0114)">Bancaribe (0114)</option>
-                        <option value="Banco Agrícola (0166)">Banco Agrícola (0166)</option>
-                        <option value="Banco del tesoro (0163)">Banco del tesoro (0163)</option>
-                        <option value="Banesco (0134)">Banesco (0134)</option>
-                        <option value="Banplus (0174)">Banplus (0174)</option>
-                        <option value="BNC- Banco Nacional de Crédito (0191)">BNC- Banco Nacional de Crédito (0191)</option>
-                        <option value="del sur (0157)">del sur (0157)</option>
-                        <option value="Exterior (0115)">Exterior (0115)</option>
-                        <option value="Fondo Común (0151)">Fondo Común (0151)</option>
-                        <option value="Mercantil (0105)">Mercantil (0105)</option>
-                        <option value="Plaza (0138)">Plaza (0138)</option>
-                        <option value="Provincial (0108)">Provincial (0108)</option>
-                        <option value="sofitasa (0137)">sofitasa (0137)</option>
-                        <option value="Venezolano de Crédito (0104)">Venezolano de Crédito (0104)</option>
-                        <option value="Venezuela (0102)">Venezuela (0102)</option>
-                    </select>
-                    <span id="bancoEmisorError" class="error">Por favor, seleccione un banco emisor.</span>
-                </div>
-                <div class="form-section">
-                    <label for="banco_receptor">Banco Receptor:</label>
-                    <select id="banco_receptor" name="bancoReceptor" required>
-                        <option value="" disabled selected>Seleccione un banco</option>
-                        <option value="NO APLICA">NO APLICA</option>
-                        <option value="JURIDICA BANESCO-1948">JURIDICA BANESCO-1948</option>
-                        <option value="JURIDICA BNC- 8120">JURIDICA BNC- 8120</option>
-                        <option value="JURIDICA VENEZUELA- 4079">JURIDICA VENEZUELA- 4079</option>
-                        <option value="JURIDICA VENEZUELA -6496">JURIDICA VENEZUELA -6496</option>
-                        <option value="PERSONAL BANESCO -6401">PERSONAL BANESCO -6401</option>
-                        <option value="PERSONAL BNC -9347">PERSONAL BNC -9347</option>
-                        <option value="PERSONAL VENEZUELA -6386">PERSONAL VENEZUELA -6386</option>
-                        <option value="PERSONAL VENEZUELA -8629">PERSONAL VENEZUELA -8629</option>
-                    </select>
-                    <span id="bancoReceptorError" class="error">Por favor, seleccione un banco receptor.</span>
-                </div>
-                <div class="form-section">
-                    <label for="nro-referencia">Número de Referencia:</label>
-                    <input type="text" id="nro-referencia" name="nroReferencia" required>
-                    <span id="referenciaError" class="error">El número de referencia debe tener entre 4 y 20 caracteres.</span>
-                </div>
-                <div class="form-section">
-                    <label for="tipo-cobro">Tipo de Cobro:</label>
-                    <select id="tipo-cobro" name="tipoCobro" required>
-                        <option value="" disabled selected>Seleccione...</option>
-                        <option value="Abono">Abono</option>
-                        <option value="Cobro Total">Cobro Total</option>
-                    </select>
-                    <span id="tipoCobroError" class="error">Por favor, seleccione un tipo de cobro.</span>
-                </div>
-                <div class="form-section">
-                    <label for="fecha-transferencia-pago">Fecha de la Transferencia o Pago:</label>
-                    <input type="date" id="fecha-transferencia-pago" name="fechaTransferenciaPago" required>
-                    <span id="fechaError" class="error">Por favor, seleccione una fecha válida.</span>
-                </div>
-                <div class="form-section">
-                    <label for="observaciones">Observaciones (Opcional):</label>
-                    <textarea id="observaciones" name="observaciones" rows="3"></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="button button-primary">Enviar Cobranza</button>
-                </div>
-            </form>
-        </main>
-    </div>
-
-    <div class="records-container">
-        <header class="records-header">
-            <h2>Registros Enviados Recientemente</h2>
-            <div id="tasa-bcv"></div>
-        </header>
-        <main class="records-body">
-            <div id="refresh-button-container">
-                <button id="refresh-data-btn" class="button button-secondary">Refrescar Caché de Datos</button>
+    <div class="app-container">
+        <header class="app-header">
+            <h2>Bienvenido, <?!= user.name ?></h2>
+            <div class="user-info">
+                <span>(<?!= user.email ?>)</span>
+                <button id="logout-button" class="button button-danger">Cerrar Sesión</button>
             </div>
-            <p id="records-status">Cargando registros...</p>
-            <table class="records-table">
-                <thead>
-                    <tr>
-                        <th data-label="Fecha">Fecha</th>
-                        <th data-label="Vendedor">Vendedor</th>
-                        <th data-label="Cliente">Cliente</th>
-                        <th data-label="Factura">Factura</th>
-                        <th data-label="Monto">Monto</th>
-                        <th data-label="Banco Emisor">Banco Emisor</th>
-                        <th data-label="Banco Receptor">Banco Receptor</th>
-                        <th data-label="Referencia">Referencia</th>
-                        <th data-label="Acciones">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="registros-table-body"></tbody>
-            </table>
-        </main>
+        </header>
+
+        <div class="card">
+            <header class="card-header">
+                <h1>Conciliapp-Registro de Cobranzas</h1>
+            </header>
+            <main class="card-body">
+                <p id="tasa-oficial" class="tasa-oficial-text">Cargando Tasa Oficial...</p>
+                <form id="formulario">
+                    <div class="form-grid">
+                        <div class="form-grid-item">
+                            <label for="vendedor">Vendedor:</label>
+                            <select id="vendedor" name="vendedor" required><option value="" disabled selected>Cargando...</option></select>
+                            <span id="vendedorError" class="error">Seleccione un vendedor.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="cliente">Cliente:</label>
+                            <select id="cliente" name="cliente" required disabled><option value="" disabled selected>Seleccione un cliente</option></select>
+                            <span id="clienteError" class="error">Seleccione un cliente.</span>
+                        </div>
+                        <div class="form-grid-full-width">
+                            <label for="factura">Factura:</label>
+                            <select id="factura" name="factura" required disabled><option value="" disabled selected>Seleccione una factura</option></select>
+                            <div id="factura-details" class="factura-details"></div>
+                            <span id="facturaError" class="error">Seleccione una factura.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="monto-pagado">Monto Pagado:</label>
+                            <input type="number" id="monto-pagado" name="montoPagado" step="0.01" min="0.01" required>
+                            <span id="montoError" class="error">El monto debe ser mayor a 0.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="forma-pago">Forma de Pago:</label>
+                            <select id="forma-pago" name="formaPago" required>
+                                <option value="" disabled selected>Seleccione...</option>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="Pago Móvil">Pago Móvil</option>
+                                <option value="Efectivo $">Efectivo $</option>
+                                <option value="Zelle">Zelle</option>
+                                <option value="No Aplica">No Aplica</option>
+                            </select>
+                            <span id="formaPagoError" class="error">Seleccione una forma de pago.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="banco_emisor">Banco Emisor:</label>
+                            <select id="banco_emisor" name="bancoEmisor" required>
+                                <option value="" disabled selected>Seleccione un banco</option>
+                                <option value="NO APLICA">NO APLICA</option>
+                                <option value="100% banco (0156)">100% banco (0156)</option>
+                                <option value="Activo (0171)">Activo (0171)</option>
+                                <option value="Banca amiga (0172)">Banca amiga (0172)</option>
+                                <option value="Bancaribe (0114)">Bancaribe (0114)</option>
+                                <option value="Banco Agrícola (0166)">Banco Agrícola (0166)</option>
+                                <option value="Banco del tesoro (0163)">Banco del tesoro (0163)</option>
+                                <option value="Banesco (0134)">Banesco (0134)</option>
+                                <option value="Banplus (0174)">Banplus (0174)</option>
+                                <option value="BNC- Banco Nacional de Crédito (0191)">BNC- Banco Nacional de Crédito (0191)</option>
+                                <option value="del sur (0157)">del sur (0157)</option>
+                                <option value="Exterior (0115)">Exterior (0115)</option>
+                                <option value="Fondo Común (0151)">Fondo Común (0151)</option>
+                                <option value="Mercantil (0105)">Mercantil (0105)</option>
+                                <option value="Plaza (0138)">Plaza (0138)</option>
+                                <option value="Provincial (0108)">Provincial (0108)</option>
+                                <option value="sofitasa (0137)">sofitasa (0137)</option>
+                                <option value="Venezolano de Crédito (0104)">Venezolano de Crédito (0104)</option>
+                                <option value="Venezuela (0102)">Venezuela (0102)</option>
+                            </select>
+                            <span id="bancoEmisorError" class="error">Seleccione un banco emisor.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="banco_receptor">Banco Receptor:</label>
+                            <select id="banco_receptor" name="bancoReceptor" required>
+                                <option value="" disabled selected>Seleccione un banco</option>
+                                <option value="ACTIBS-Activo Bs">ACTIBS-Activo Bs</option>
+                                <option value="BANEBS-Banesco Bs">BANEBS-Banesco Bs</option>
+                                <option value="BANEPM-PAGO MOVIL BANESCO">BANEPM-PAGO MOVIL BANESCO</option>
+                                <option value="BANEUS-BANESCO DIVISAS">BANEUS-BANESCO DIVISAS</option>
+                                <option value="BANPA-Banesco Panama US">BANPA-Banesco Panama US</option>
+                                <option value="BFCBS-BFC BS">BFCBS-BFC BS</option>
+                                <option value="BFCEU-BFC EUROS">BFCEU-BFC EUROS</option>
+                                <option value="BICEBS-BICENTENARIO BS">BICEBS-BICENTENARIO BS</option>
+                                <option value="BNCBS-BNC Bs">BNCBS-BNC Bs</option>
+                                <option value="BNCUS-BNC US">BNCUS-BNC US</option>
+                                <option value="BODBS-BOD BS">BODBS-BOD BS</option>
+                                <option value="CARBS-BANCARIBE BOLIVARES">CARBS-BANCARIBE BOLIVARES</option>
+                                <option value="MERBS-MERCANTIL BS">MERBS-MERCANTIL BS</option>
+                                <option value="MERUS-MERCANTIL US">MERUS-MERCANTIL US</option>
+                                <option value="PLAZBS-PLAZA BS">PLAZBS-PLAZA BS</option>
+                                <option value="PLAZUS-PLAZA US">PLAZUS-PLAZA US</option>
+                                <option value="PROVBS-Banco Provicial Bs">PROVBS-Banco Provicial Bs</option>
+                                <option value="PROVUS-Banco Provicial US">PROVUS-Banco Provicial US</option>
+                                <option value="TESOBS-TESORO BS">TESOBS-TESORO BS</option>
+                                <option value="VZLABS-Banco Venezuela Bs">VZLABS-Banco Venezuela Bs</option>
+                                <option value="VZLAPM-PAGO MOVIL VZLA">VZLAPM-PAGO MOVIL VZLA</option>
+                                <option value="VZLAUS-Banco Venezuela US $">VZLAUS-Banco Venezuela US $</option>
+                                <option value="ZELLE-ZELLE US">ZELLE-ZELLE US</option>
+                            </select>
+                            <span id="bancoReceptorError" class="error">Seleccione un banco receptor.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="nro-referencia">Número de Referencia:</label>
+                            <input type="text" id="nro-referencia" name="nroReferencia" required>
+                            <span id="referenciaError" class="error">Referencia debe tener entre 4 y 20 caracteres.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="tipo-cobro">Tipo de Cobro:</label>
+                            <select id="tipo-cobro" name="tipoCobro" required>
+                                <option value="" disabled selected>Seleccione...</option>
+                                <option value="Abono">Abono</option>
+                                <option value="Cobro Total">Cobro Total</option>
+                                <option value="Retención">Retención</option>
+                            </select>
+                            <span id="tipoCobroError" class="error">Seleccione un tipo de cobro.</span>
+                        </div>
+                        <div class="form-grid-item">
+                            <label for="fecha-transferencia-pago">Fecha del Pago:</label>
+                            <input type="date" id="fecha-transferencia-pago" name="fechaTransferenciaPago" required>
+                            <span id="fechaError" class="error">Seleccione una fecha válida.</span>
+                        </div>
+                        <div class="form-grid-full-width">
+                            <label for="observaciones">Observaciones (Opcional):</label>
+                            <textarea id="observaciones" name="observaciones" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="button button-primary">Enviar Cobranza</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+
+        <div class="card">
+            <header class="card-header records-header">
+                <h2>Registros Recientes</h2>
+                <button id="refresh-data-btn" class="button button-secondary">Refrescar Datos</button>
+            </header>
+            <main class="card-body">
+                <p id="records-status">Cargando registros...</p>
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th><th>Vendedor</th><th>Cliente</th><th>Factura</th><th>Monto</th><th>Banco Emisor</th><th>Banco Receptor</th><th>Referencia</th><th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registros-table-body"></tbody>
+                </table>
+            </main>
+        </div>
     </div>
 
     <div id="delete-modal" class="modal">
         <div class="modal-content">
-            <h4>Confirmar Eliminación</h4>
+            <h3>Confirmar Eliminación</h3>
             <p>¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
             <div class="modal-buttons">
-                <button id="confirm-delete-btn" class="button button-danger">Eliminar</button>
                 <button id="cancel-delete-btn" class="button button-secondary">Cancelar</button>
+                <button id="confirm-delete-btn" class="button button-danger">Eliminar</button>
             </div>
         </div>
     </div>
@@ -493,9 +389,7 @@
         const clientCache = {
             TTL: 3600 * 1000,
             PREFIX: 'formCobranza_',
-            set(key, data) {
-                try { localStorage.setItem(this.PREFIX + key, JSON.stringify({ timestamp: new Date().getTime(), data })); } catch (e) { console.error("Error guardando en localStorage", e); }
-            },
+            set(key, data) { try { localStorage.setItem(this.PREFIX + key, JSON.stringify({ timestamp: new Date().getTime(), data })); } catch (e) { console.error("Error guardando en localStorage", e); } },
             get(key) {
                 try {
                     const itemStr = localStorage.getItem(this.PREFIX + key);
@@ -508,55 +402,34 @@
                     return item.data;
                 } catch (e) { console.error("Error leyendo de localStorage", e); return null; }
             },
-            clear() {
-                try {
-                    Object.keys(localStorage).forEach(key => { if (key.startsWith(this.PREFIX)) localStorage.removeItem(key); });
-                    console.log("Caché de la aplicación limpiado.");
-                } catch (e) { console.error("Error limpiando localStorage", e); }
-            }
+            clear() { try { Object.keys(localStorage).forEach(key => { if (key.startsWith(this.PREFIX)) localStorage.removeItem(key); }); } catch (e) { console.error("Error limpiando localStorage", e); } }
         };
 
         class UiManager {
             constructor() {
                 this.elements = {
-                    notification: document.getElementById('notification'),
-                    loadingSpinner: document.getElementById('loading-spinner'),
-                    form: document.getElementById('formulario'),
-                    vendedorSelect: document.getElementById('vendedor'),
-                    clienteSelect: document.getElementById('cliente'),
-                    facturaSelect: document.getElementById('factura'),
-                    facturaDetailsDiv: document.getElementById('factura-details'),
-                    recordsTableBody: document.getElementById('registros-table-body'),
-                    recordsStatus: document.getElementById('records-status'),
-                    deleteModal: document.getElementById('delete-modal'),
-                    confirmDeleteBtn: document.getElementById('confirm-delete-btn'),
-                    cancelDeleteBtn: document.getElementById('cancel-delete-btn'),
-                    tasaBcvDiv: document.getElementById('tasa-bcv'),
-                    tasaOficial: document.getElementById('tasa-oficial'),
-                    logoutButton: document.getElementById('logout-button')
+                    notification: document.getElementById('notification'), loadingSpinner: document.getElementById('loading-spinner'), form: document.getElementById('formulario'), vendedorSelect: document.getElementById('vendedor'), clienteSelect: document.getElementById('cliente'), facturaSelect: document.getElementById('factura'), facturaDetailsDiv: document.getElementById('factura-details'), recordsTableBody: document.getElementById('registros-table-body'), recordsStatus: document.getElementById('records-status'), deleteModal: document.getElementById('delete-modal'), confirmDeleteBtn: document.getElementById('confirm-delete-btn'), cancelDeleteBtn: document.getElementById('cancel-delete-btn'), tasaOficial: document.getElementById('tasa-oficial'), logoutButton: document.getElementById('logout-button')
                 };
             }
             toggleLoading(show) { this.elements.loadingSpinner.style.display = show ? 'flex' : 'none'; }
             showNotification(message, type = 'success') { this.elements.notification.textContent = message; this.elements.notification.className = `notification ${type} visible`; setTimeout(() => this.elements.notification.classList.remove('visible'), 3000); }
             showDeleteModal() { this.elements.deleteModal.style.display = 'block'; }
             hideDeleteModal() { this.elements.deleteModal.style.display = 'none'; }
-            updateBcvRate(rate) {
-                if (rate) {
-                    this.elements.tasaBcvDiv.innerHTML = `Tasa Oficial BCV: <span>Bs. ${rate.toFixed(2)}</span>`;
-                    this.elements.tasaOficial.textContent = `Bs. ${rate.toFixed(2)}`;
-                } else {
-                    this.elements.tasaBcvDiv.innerHTML = 'No se pudo obtener la tasa BCV.';
-                    this.elements.tasaOficial.textContent = 'No disponible';
-                }
-            }
+            updateBcvRate(rate) { this.elements.tasaOficial.textContent = rate ? `Tasa Oficial BCV: Bs. ${rate.toFixed(2)}` : 'Tasa BCV no disponible'; }
+            
+            // *** FUNCIÓN CORREGIDA ***
             updateRecordsTable(records) {
-                this.elements.recordsTableBody.innerHTML = '';
-                if (records.length === 0) {
+                const tableBody = this.elements.recordsTableBody;
+                tableBody.innerHTML = ''; // Limpiar tabla
+                
+                if (!records || records.length === 0) {
                     this.elements.recordsStatus.textContent = 'No hay registros para mostrar.';
+                    this.elements.recordsStatus.style.display = 'block';
                     return;
                 }
+                
                 records.forEach(record => {
-                    const row = this.elements.recordsTableBody.insertRow();
+                    const row = document.createElement('tr'); // Crear <tr>
                     row.innerHTML = `
                         <td data-label="Fecha">${record.fechaEnvio || record.fecha}</td>
                         <td data-label="Vendedor">${record.vendedor}</td>
@@ -570,9 +443,12 @@
                             ${record.puedeEliminar ? `<button class="ghost-delete" data-row-index="${record.rowIndex}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : ''}
                         </td>
                     `;
+                    tableBody.appendChild(row); // Añadir <tr> al <tbody>
                 });
-                this.elements.recordsStatus.textContent = '';
+                
+                this.elements.recordsStatus.style.display = 'none';
             }
+
             resetForm() {
                 this.elements.form.reset();
                 this.elements.facturaDetailsDiv.style.display = 'none';
@@ -593,325 +469,166 @@
         }
 
         class DataManager {
-            constructor(ui) {
-                this.ui = ui;
-                this.facturasPendientes = [];
-                this.currentVendedor = null;
-                this.registroToDelete = null;
-            }
+            constructor(ui) { this.ui = ui; this.facturasPendientes = []; this.currentVendedor = null; this.registroToDelete = null; }
             async loadInitialData(forceRefresh = false) {
                 this.ui.toggleLoading(true);
-                if (forceRefresh) {
-                    clientCache.clear();
-                }
+                if (forceRefresh) clientCache.clear();
                 try {
-                    await Promise.all([
-                        this.loadVendedores(forceRefresh),
-                        this.loadBcvRate(forceRefresh),
-                        this.loadRecords(this.currentVendedor, forceRefresh)
-                    ]);
-                } catch (error) {
-                    this.ui.showNotification(`Error al cargar datos iniciales: ${error.message}`, 'error');
-                } finally {
-                    this.ui.toggleLoading(false);
-                }
+                    await Promise.all([ this.loadVendedores(forceRefresh), this.loadBcvRate(forceRefresh), this.loadRecords(this.currentVendedor, forceRefresh) ]);
+                } catch (error) { this.ui.showNotification(`Error al cargar datos: ${error.message}`, 'error');
+                } finally { this.ui.toggleLoading(false); }
             }
             async loadVendedores(forceRefresh = false) {
                 const cacheKey = 'vendedores';
                 let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
                 if (cachedData) {
                     this.ui.populateSelect(this.ui.elements.vendedorSelect, cachedData, 'Seleccione un vendedor');
-                    if (this.ui.elements.vendedorSelect.options.length === 2) {
-                        this.ui.elements.vendedorSelect.selectedIndex = 1;
-                        this.ui.elements.vendedorSelect.dispatchEvent(new Event('change'));
-                    }
+                    if (this.ui.elements.vendedorSelect.options.length === 2) { this.ui.elements.vendedorSelect.selectedIndex = 1; this.ui.elements.vendedorSelect.dispatchEvent(new Event('change')); }
                     return;
                 }
                 this.ui.elements.vendedorSelect.innerHTML = '<option disabled selected>Cargando...</option>';
                 this.ui.elements.vendedorSelect.disabled = true;
                 try {
-                    const options = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .loadVendedores(sessionToken, forceRefresh);
-                    });
+                    const options = await this.runGoogleScript('loadVendedores', sessionToken, forceRefresh);
                     clientCache.set(cacheKey, options);
                     this.ui.populateSelect(this.ui.elements.vendedorSelect, options, 'Seleccione un vendedor');
-                    if (this.ui.elements.vendedorSelect.options.length === 2) {
-                        this.ui.elements.vendedorSelect.selectedIndex = 1;
-                        this.ui.elements.vendedorSelect.dispatchEvent(new Event('change'));
-                    }
-                } catch (error) {
-                    this.ui.elements.vendedorSelect.innerHTML = `<option disabled>Error al cargar</option>`;
-                    this.ui.showNotification(`Error al cargar vendedores: ${error.message}`, 'error');
-                }
+                    if (this.ui.elements.vendedorSelect.options.length === 2) { this.ui.elements.vendedorSelect.selectedIndex = 1; this.ui.elements.vendedorSelect.dispatchEvent(new Event('change')); }
+                } catch (error) { this.ui.elements.vendedorSelect.innerHTML = `<option disabled>Error al cargar</option>`; this.ui.showNotification(`Error al cargar vendedores: ${error.message}`, 'error'); }
             }
             async loadClientes() {
                 const vendedor = this.ui.elements.vendedorSelect.value;
                 this.currentVendedor = vendedor;
-                if (!vendedor || vendedor === 'Mostrar todos') {
-                    this.ui.elements.clienteSelect.innerHTML = '<option disabled selected>Seleccione un cliente</option>';
-                    this.ui.elements.clienteSelect.disabled = true;
-                    this.ui.elements.facturaSelect.innerHTML = '<option disabled selected>Seleccione una factura</option>';
-                    this.ui.elements.facturaSelect.disabled = true;
-                    this.ui.elements.facturaDetailsDiv.style.display = 'none';
-                    return;
-                }
+                this.ui.elements.clienteSelect.disabled = true;
+                this.ui.elements.facturaSelect.disabled = true;
+                if (!vendedor || vendedor === 'Mostrar todos') return;
                 const cacheKey = `clientes_${vendedor}`;
                 let cachedData = clientCache.get(cacheKey);
-                if (cachedData) {
-                    this.ui.populateSelect(this.ui.elements.clienteSelect, cachedData, 'Seleccione un cliente');
-                    return;
-                }
+                if (cachedData) { this.ui.populateSelect(this.ui.elements.clienteSelect, cachedData, 'Seleccione un cliente'); return; }
                 this.ui.toggleLoading(true);
-                this.ui.elements.clienteSelect.innerHTML = '<option disabled>Cargando...</option>';
-                this.ui.elements.clienteSelect.disabled = true;
                 try {
-                    const options = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .cargarClientesEnPregunta1(sessionToken, vendedor);
-                    });
+                    const options = await this.runGoogleScript('cargarClientesEnPregunta1', sessionToken, vendedor);
                     clientCache.set(cacheKey, options);
                     this.ui.populateSelect(this.ui.elements.clienteSelect, options, 'Seleccione un cliente');
-                } catch (error) {
-                    this.ui.elements.clienteSelect.innerHTML = '<option disabled>Error al cargar clientes</option>';
-                    this.ui.showNotification(`Error al cargar clientes: ${error.message}`, 'error');
-                } finally {
-                    this.ui.toggleLoading(false);
-                }
+                } catch (error) { this.ui.showNotification(`Error al cargar clientes: ${error.message}`, 'error');
+                } finally { this.ui.toggleLoading(false); }
             }
             async loadFacturas() {
                 const cliente = this.ui.elements.clienteSelect.value;
                 const vendedor = this.ui.elements.vendedorSelect.value;
-                if (!cliente || !vendedor) {
-                    this.ui.elements.facturaSelect.innerHTML = '<option disabled selected>Seleccione una factura</option>';
-                    this.ui.elements.facturaSelect.disabled = true;
-                    this.ui.elements.facturaDetailsDiv.style.display = 'none';
-                    return;
-                }
+                this.ui.elements.facturaSelect.disabled = true;
+                if (!cliente || !vendedor) return;
                 const cacheKey = `facturas_${vendedor}_${cliente}`;
                 let cachedData = clientCache.get(cacheKey);
-                if (cachedData) {
-                    this.facturasPendientes = cachedData;
-                    this.populateFacturasSelect();
-                    return;
-                }
+                if (cachedData) { this.facturasPendientes = cachedData; this.populateFacturasSelect(); return; }
                 this.ui.toggleLoading(true);
-                this.ui.elements.facturaSelect.innerHTML = '<option disabled>Cargando...</option>';
-                this.ui.elements.facturaSelect.disabled = true;
                 try {
-                    const facturas = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .obtenerFacturas(sessionToken, vendedor, cliente);
-                    });
+                    const facturas = await this.runGoogleScript('obtenerFacturas', sessionToken, vendedor, cliente);
                     clientCache.set(cacheKey, facturas);
                     this.facturasPendientes = facturas;
                     this.populateFacturasSelect();
-                } catch (error) {
-                    this.ui.elements.facturaSelect.innerHTML = '<option disabled>Error al cargar facturas</option>';
-                    this.ui.showNotification(`Error al cargar facturas: ${error.message}`, 'error');
-                } finally {
-                    this.ui.toggleLoading(false);
-                }
+                } catch (error) { this.ui.showNotification(`Error al cargar facturas: ${error.message}`, 'error');
+                } finally { this.ui.toggleLoading(false); }
             }
             populateFacturasSelect() {
-                const optionsHtml = this.facturasPendientes.length === 0
-                    ? '<option disabled>No hay facturas pendientes</option>'
-                    : this.facturasPendientes.map(f => `<option value="${f.documento}">${f.documento}</option>`).join('');
+                const optionsHtml = this.facturasPendientes.length > 0 ? this.facturasPendientes.map(f => `<option value="${f.documento}">${f.documento}</option>`).join('') : '<option disabled>No hay facturas pendientes</option>';
                 this.ui.populateSelect(this.ui.elements.facturaSelect, optionsHtml, 'Seleccione una factura');
             }
-            showFacturaDetails() {
-                const documento = this.ui.elements.facturaSelect.value;
-                const factura = this.facturasPendientes.find(f => f.documento === documento);
-                if (factura) {
-                    this.ui.showFacturaDetails(factura);
-                }
-            }
+            showFacturaDetails() { const factura = this.facturasPendientes.find(f => f.documento === this.ui.elements.facturaSelect.value); if (factura) this.ui.showFacturaDetails(factura); }
             async loadBcvRate(forceRefresh = false) {
                 const cacheKey = 'bcvRate';
-                let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
-                if (cachedData) {
-                    this.ui.updateBcvRate(cachedData);
-                    return;
-                }
+                if (!forceRefresh && clientCache.get(cacheKey)) { this.ui.updateBcvRate(clientCache.get(cacheKey)); return; }
                 try {
-                    const rate = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .obtenerTasaBCV(sessionToken);
-                    });
+                    const rate = await this.runGoogleScript('obtenerTasaBCV', sessionToken);
                     clientCache.set(cacheKey, rate);
                     this.ui.updateBcvRate(rate);
-                } catch (error) {
-                    this.ui.updateBcvRate(null);
-                    this.ui.showNotification(`Error al cargar tasa BCV: ${error.message}`, 'error');
-                }
+                } catch (error) { this.ui.updateBcvRate(null); }
             }
             async loadRecords(vendedor = this.currentVendedor, forceRefresh = false) {
                 const cacheKey = `records_${vendedor || 'all'}`;
-                let cachedData = forceRefresh ? null : clientCache.get(cacheKey);
-                if (cachedData) {
-                    this.ui.updateRecordsTable(cachedData);
-                    return;
-                }
+                if (!forceRefresh && clientCache.get(cacheKey)) { this.ui.updateRecordsTable(clientCache.get(cacheKey)); return; }
+                this.ui.elements.recordsStatus.style.display = 'block';
                 this.ui.elements.recordsStatus.textContent = 'Cargando registros...';
                 try {
-                    const registros = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .obtenerRegistrosEnviados(sessionToken, vendedor);
-                    });
+                    const registros = await this.runGoogleScript('obtenerRegistrosEnviados', sessionToken, vendedor);
                     clientCache.set(cacheKey, registros);
                     this.ui.updateRecordsTable(registros);
-                } catch (error) {
-                    this.ui.elements.recordsStatus.textContent = `Error al cargar registros: ${error.message}`;
-                    this.ui.showNotification(`Error al cargar registros: ${error.message}`, 'error');
-                }
+                } catch (error) { this.ui.elements.recordsStatus.textContent = 'Error al cargar registros.'; }
             }
             async submitForm() {
-                if (!this.validarFormulario()) {
-                    this.ui.showNotification('Por favor, corrija los errores en el formulario.', 'error');
-                    return;
-                }
+                if (!this.validarFormulario()) { this.ui.showNotification('Corrija los errores.', 'error'); return; }
                 const formData = new FormData(this.ui.elements.form);
                 const data = Object.fromEntries(formData.entries());
                 data.nombreCliente = this.ui.elements.clienteSelect.options[this.ui.elements.clienteSelect.selectedIndex].text;
                 this.ui.toggleLoading(true);
                 try {
-                    const response = await new Promise((resolve, reject) => {
-                        google.script.run
-                            .withSuccessHandler(resolve)
-                            .withFailureHandler(reject)
-                            .enviarDatos(sessionToken, data);
-                    });
+                    const response = await this.runGoogleScript('enviarDatos', sessionToken, data);
                     this.ui.showNotification(response, 'success');
                     this.ui.resetForm();
-                    await this.loadRecords(this.currentVendedor, true); // Forzar refresco de registros
-                } catch (error) {
-                    this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
-                } finally {
-                    this.ui.toggleLoading(false);
-                }
+                    await this.loadRecords(this.currentVendedor, true);
+                } catch (error) { this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
+                } finally { this.ui.toggleLoading(false); }
             }
             async deleteRecord() {
                 this.ui.hideDeleteModal();
                 if (this.registroToDelete) {
                     this.ui.toggleLoading(true);
                     try {
-                        const response = await new Promise((resolve, reject) => {
-                            google.script.run
-                                .withSuccessHandler(resolve)
-                                .withFailureHandler(reject)
-                                .eliminarRegistro(sessionToken, this.registroToDelete);
-                        });
+                        const response = await this.runGoogleScript('eliminarRegistro', sessionToken, this.registroToDelete);
                         this.ui.showNotification(response, 'success');
-                        await this.loadRecords(this.currentVendedor, true); // Forzar refresco de registros
-                    } catch (error) {
-                        this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
-                    } finally {
-                        this.ui.toggleLoading(false);
-                    }
+                        await this.loadRecords(this.currentVendedor, true);
+                    } catch (error) { this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
+                    } finally { this.ui.toggleLoading(false); }
                 }
             }
-            setRegistroToDelete(rowIndex) {
-                this.registroToDelete = rowIndex;
-            }
-            clearClientCacheAndReload() {
-                this.loadInitialData(true);
-            }
+            setRegistroToDelete(rowIndex) { this.registroToDelete = rowIndex; }
+            clearClientCacheAndReload() { this.loadInitialData(true); }
             validarFormulario() {
                 let isValid = true;
+                document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
                 const fields = [
-                    { id: 'vendedor', errorId: 'vendedorError', condition: value => value === '' },
-                    { id: 'cliente', errorId: 'clienteError', condition: value => value === '' },
-                    { id: 'factura', errorId: 'facturaError', condition: value => value === '' },
-                    { id: 'monto-pagado', errorId: 'montoError', condition: value => !value || parseFloat(value) <= 0 },
-                    { id: 'forma-pago', errorId: 'formaPagoError', condition: value => value === '' },
-                    { id: 'banco_emisor', errorId: 'bancoEmisorError', condition: value => value === '' },
-                    { id: 'banco_receptor', errorId: 'bancoReceptorError', condition: value => value === '' },
-                    { id: 'nro-referencia', errorId: 'referenciaError', condition: value => value.length < 4 || value.length > 20 },
-                    { id: 'tipo-cobro', errorId: 'tipoCobroError', condition: value => value === '' },
-                    { id: 'fecha-transferencia-pago', errorId: 'fechaError', condition: value => !value || new Date(value) > new Date() }
+                    { id: 'vendedor', errorId: 'vendedorError' }, { id: 'cliente', errorId: 'clienteError' }, { id: 'factura', errorId: 'facturaError' }, { id: 'monto-pagado', errorId: 'montoError', condition: v => !v || +v <= 0 }, { id: 'forma-pago', errorId: 'formaPagoError' }, { id: 'banco_emisor', errorId: 'bancoEmisorError' }, { id: 'banco_receptor', errorId: 'bancoReceptorError' }, { id: 'nro-referencia', errorId: 'referenciaError', condition: v => v.length < 4 || v.length > 20 }, { id: 'tipo-cobro', errorId: 'tipoCobroError' }, { id: 'fecha-transferencia-pago', errorId: 'fechaError', condition: v => !v || new Date(v) > new Date() }
                 ];
-                fields.forEach(field => {
-                    const value = document.getElementById(field.id).value;
-                    const errorElement = document.getElementById(field.errorId);
-                    if (field.condition(value)) {
-                        errorElement.style.display = 'block';
+                fields.forEach(f => {
+                    const el = document.getElementById(f.id);
+                    if (!el.value || (f.condition && f.condition(el.value))) {
+                        document.getElementById(f.errorId).style.display = 'block';
                         isValid = false;
-                    } else {
-                        errorElement.style.display = 'none';
                     }
                 });
                 return isValid;
             }
+            runGoogleScript(funcName, ...args) {
+                return new Promise((resolve, reject) => {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[funcName](...args);
+                });
+            }
         }
 
-        // Inicialización y eventos
         const uiManager = new UiManager();
         const dataManager = new DataManager(uiManager);
 
         document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const isNewSession = urlParams.get('new_session') === 'true';
-
+            const isNewSession = new URLSearchParams(window.location.search).get('new_session') === 'true';
             dataManager.loadInitialData(isNewSession);
-
-            uiManager.elements.vendedorSelect.addEventListener('change', () => {
-                dataManager.loadClientes();
-                dataManager.loadRecords(uiManager.elements.vendedorSelect.value, true);
-            });
+            uiManager.elements.vendedorSelect.addEventListener('change', () => dataManager.loadClientes());
             uiManager.elements.clienteSelect.addEventListener('change', () => dataManager.loadFacturas());
             uiManager.elements.facturaSelect.addEventListener('change', () => dataManager.showFacturaDetails());
-            uiManager.elements.form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                dataManager.submitForm();
-            });
-            uiManager.elements.recordsTableBody.addEventListener('click', (e) => {
-                if (e.target.closest('.ghost-delete')) {
-                    const rowIndex = e.target.closest('.ghost-delete').dataset.rowIndex;
-                    dataManager.setRegistroToDelete(rowIndex);
-                    uiManager.showDeleteModal();
-                }
-            });
-            document.getElementById('refresh-data-btn').addEventListener('click', () => {
-                dataManager.clearClientCacheAndReload();
-                uiManager.showNotification('Datos actualizados.', 'success');
-            });
+            uiManager.elements.form.addEventListener('submit', e => { e.preventDefault(); dataManager.submitForm(); });
+            uiManager.elements.recordsTableBody.addEventListener('click', e => { const deleteButton = e.target.closest('.ghost-delete'); if (deleteButton) { dataManager.setRegistroToDelete(deleteButton.dataset.rowIndex); uiManager.showDeleteModal(); } });
+            document.getElementById('refresh-data-btn').addEventListener('click', () => { dataManager.clearClientCacheAndReload(); uiManager.showNotification('Caché limpiado y datos actualizados.', 'success'); });
             uiManager.elements.confirmDeleteBtn.addEventListener('click', () => dataManager.deleteRecord());
-            // *** CORRECCIÓN DEL ERROR ***
-            // Se cambió la variable 'ui' por la correcta 'uiManager'
             uiManager.elements.cancelDeleteBtn.addEventListener('click', () => uiManager.hideDeleteModal());
-            
-            window.onclick = (event) => {
-                if (event.target == uiManager.elements.deleteModal) {
-                    uiManager.hideDeleteModal();
-                }
-            };
-            uiManager.elements.logoutButton.addEventListener('click', () => {
-                uiManager.elements.logoutButton.disabled = true;
-                uiManager.elements.logoutButton.textContent = 'Cerrando...';
-                
+            window.addEventListener('click', e => { if (e.target == uiManager.elements.deleteModal) uiManager.hideDeleteModal(); });
+            uiManager.elements.logoutButton.addEventListener('click', async () => {
+                uiManager.elements.logoutButton.disabled = true; uiManager.elements.logoutButton.textContent = 'Cerrando...';
                 const tokenToInvalidate = sessionStorage.getItem('sessionToken') || sessionToken;
-                
-                google.script.run
-                    .withSuccessHandler(() => {
-                        sessionStorage.removeItem('sessionToken');
-                        window.top.location.href = webAppUrl;
-                    })
-                    .withFailureHandler((error) => {
-                        uiManager.showNotification(`Error al cerrar sesión: ${error.message}`, 'error');
-                        uiManager.elements.logoutButton.disabled = false;
-                        uiManager.elements.logoutButton.textContent = 'Cerrar Sesión';
-                    })
-                    .logoutUser(tokenToInvalidate);
+                try {
+                    await dataManager.runGoogleScript('logoutUser', tokenToInvalidate);
+                    sessionStorage.removeItem('sessionToken'); window.top.location.href = webAppUrl;
+                } catch (error) {
+                    uiManager.showNotification(`Error al cerrar sesión: ${error.message}`, 'error');
+                    uiManager.elements.logoutButton.disabled = false; uiManager.elements.logoutButton.textContent = 'Cerrar Sesión';
+                }
             });
         });
     </script>

@@ -103,12 +103,12 @@ function logoutUser(token) {
 
 /**
  * Registra un nuevo usuario si su correo está en la lista de vendedores permitidos.
+ * @param {string} name
  * @param {string} email
  * @param {string} password
- * @param {string} name
  * @returns {string} Mensaje de éxito.
  */
-function registerUser(email, password, name) {
+function registerUser(name, email, password) {
   // ... (La lógica de registerUser no necesita cambios drásticos, pero nos aseguramos que esté completa)
   const normalizedEmail = email.trim().toLowerCase();
   if (!validateUserInVendedoresSheet(normalizedEmail)) {
