@@ -356,6 +356,7 @@
             <header class="card-header records-header">
                 <h2>Registros Recientes</h2>
                 <button id="refresh-data-btn" class="button button-secondary">Refrescar Datos</button>
+                <button id="download-pdf-btn" class="button button-secondary">Descargar PDF (Ayer y Hoy)</button>
             </header>
             <main class="card-body">
                 <p id="records-status">Cargando registros...</p>
@@ -630,6 +631,44 @@
                     uiManager.elements.logoutButton.disabled = false; uiManager.elements.logoutButton.textContent = 'Cerrar Sesión';
                 }
             });
+
+            const downloadBtn = document.getElementById('download-pdf-btn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', async () => {
+                    uiManager.toggleLoading(true);
+                    downloadBtn.disabled = true;
+                    try {
+                        const vendedorFiltro = uiManager.elements.vendedorSelect.value || null;
+                        const res = await dataManager.runGoogleScript('descargarRegistrosPDF', sessionToken, vendedorFiltro);
+
+                        // Decodificar base64 -> Blob PDF (más robusto que data URL)
+                        const byteCharacters = atob(res.base64);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = res.filename || 'Registros.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+                        uiManager.showNotification('PDF generado con éxito.');
+                    } catch (error) {
+                        uiManager.showNotification(`Error generando PDF: ${error.message}`, 'error');
+                        console.error('Error al descargar PDF:', error);
+                    } finally {
+                        downloadBtn.disabled = false;
+                        uiManager.toggleLoading(false);
+                    }
+                });
+            }
         });
     </script>
 </body>

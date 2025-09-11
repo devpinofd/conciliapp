@@ -50,9 +50,9 @@ function processLogin(email, password) {
     const token = Utilities.getUuid();
     
     // Guardar el token en caché, asociándolo con el email y nombre del usuario.
-    // El token expira en 1 hora (3600 segundos).
+    // El token expira en 6 horas (21600 segundos).
     const userData = { email: normalizedEmail, name: userRow[3] || normalizedEmail.split('@')[0] };
-    sessionCache.put(token, JSON.stringify(userData), 3600);
+    sessionCache.put(token, JSON.stringify(userData), 21600);
 
     Logger.log(`Login exitoso y token generado para: ${email}`);
     return { status: 'SUCCESS', token: token };

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registros - <?= meta.rangeLabel ?></title>
+  <style>
+    @page { size: A4; margin: 18mm 14mm; }
+    body { font-family: Arial, sans-serif; color: #0f172a; }
+    h1 { margin: 0 0 8px 0; font-size: 20px; }
+    .meta { font-size: 12px; color: #475569; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th, td { border: 1px solid #e2e8f0; padding: 6px 8px; vertical-align: top; }
+    th { background: #f1f5f9; text-align: left; }
+    tfoot td { font-weight: bold; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .muted { color: #64748b; }
+    .empty { padding: 24px; text-align: center; color: #64748b; border: 1px solid #e2e8f0; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Registros enviados</h1>
+  <div class="meta">
+    Rango: <?= meta.rangeLabel ?><br>
+    Usuario: <?= meta.user.name ?> (<?= meta.user.email ?>)
+  </div>
+
+  <? 
+    // Helpers robustos para interpretar y formatear montos correctamente
+
+    // Convierte diferentes formatos de string numérico a Number seguro.
+    // Soporta: "28.263,70" (ES), "28,263.70" (EN), "28263.70", "28263", etc.
+    function normalizeMoneyToNumber(val) {
+      if (typeof val === 'number') return val;
+      var s = String(val || '').trim();
+      if (!s) return 0;
+
+      // Eliminar espacios y símbolos de moneda
+      s = s.replace(/\s+/g, '').replace(/[^\d.,\-]/g, '');
+
+      var hasComma = s.indexOf(',') !== -1;
+      var hasDot = s.indexOf('.') !== -1;
+
+      if (hasComma && hasDot) {
+        // El separador decimal es el último símbolo que aparezca entre coma o punto
+        var lastComma = s.lastIndexOf(',');
+        var lastDot = s.lastIndexOf('.');
+        var decSep = lastComma > lastDot ? ',' : '.';
+        var thouSep = decSep === ',' ? '.' : ',';
+
+        // Eliminar miles y convertir decimal a punto
+        var reThou = new RegExp('\\' + thouSep, 'g');
+        s = s.replace(reThou, '').replace(decSep, '.');
+        var n = Number(s);
+        return isNaN(n) ? 0 : n;
+      } else if (hasComma) {
+        // Si hay varias comas, las primeras son miles y la última decimal
+        var partsC = s.split(',');
+        var dec = partsC.pop();
+        var int = partsC.join(''); // quita comas de miles
+        var candidate = int + '.' + dec;
+        var n1 = Number(candidate.replace(/[^\d.\-]/g, ''));
+        return isNaN(n1) ? 0 : n1;
+      } else if (hasDot) {
+        // Si hay varios puntos, lo más probable es que sean miles sin decimales
+        var partsD = s.split('.');
+        if (partsD.length > 2) {
+          var joined = partsD.join(''); // quita puntos de miles
+          var n2 = Number(joined);
+          return isNaN(n2) ? 0 : n2;
+        } else {
+          // Un solo punto: si el bloque final tiene 3 dígitos -> miles; si no -> decimal
+          var tail = partsD[1] || '';
+          if (tail.length === 3) {
+            var asInt = partsD.join('');
+            var n3 = Number(asInt);
+            return isNaN(n3) ? 0 : n3;
+          } else {
+            var n4 = Number(partsD[0] + '.' + tail);
+            return isNaN(n4) ? 0 : n4;
+          }
+        }
+      } else {
+        // Solo dígitos (posible signo)
+        var n5 = Number(s.replace(/[^\d\-]/g, ''));
+        return isNaN(n5) ? 0 : n5;
+      }
+    }
+
+    // Formatea un Number a es-VE manualmente (miles "." y decimales ",")
+    function numberToEsVE(n) {
+      var neg = n < 0 ? '-' : '';
+      var abs = Math.abs(n);
+      var fixed = abs.toFixed(2); // 2 decimales
+      var parts = fixed.split('.');
+      var intPart = parts[0];
+      var decPart = parts[1];
+
+      // Inserta separadores de miles "."
+      intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return neg + intPart + ',' + decPart;
+    }
+
+    // API de formateo utilizada por la plantilla
+    function formatMoney(val) {
+      var n = normalizeMoneyToNumber(val);
+      return numberToEsVE(n);
+    }
+  ?>
+
+  <? if (!records || records.length === 0) { ?>
+    <div class="empty">No se encontraron registros para el rango seleccionado.</div>
+  <? } else { ?>
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha envío</th>
+          <th>Vendedor</th>
+          <th>Cliente</th>
+          <th>Factura</th>
+          <th class="right">Monto</th>
+          <th>Forma Pago</th>
+          <th>Banco Emisor</th>
+          <th>Banco Receptor</th>
+          <th>Referencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        <? var total = 0; ?>
+        <? records.forEach(function(r) { 
+             var montoNum = normalizeMoneyToNumber(r.monto);
+             total += montoNum;
+        ?> 
+          <tr>
+            <td><?= r.fecha ?></td>
+            <td><?= r.vendedor ?></td>
+            <td><?= r.clienteNombre ?> <span class="muted">(<?= r.clienteCodigo ?>)</span></td>
+            <td><?= r.factura ?></td>
+            <td class="right"><?= formatMoney(r.monto) ?></td>
+            <td><?= r.formaPago ?></td>
+            <td><?= r.bancoEmisor ?></td>
+            <td><?= r.bancoReceptor ?></td>
+            <td><?= r.referencia ?></td>
+          </tr>
+        <? }); ?>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="right">Total</td>
+          <td class="right"><?= numberToEsVE(total) ?></td>
+          <td colspan="4"></td>
+        </tr>
+      </tfoot>
+    </table>
+  <? } ?>
+</body>
+</html>

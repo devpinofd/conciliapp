@@ -451,6 +451,73 @@ class CobranzaService {
     return 'Registro eliminado y archivado con éxito.';
   }
 }
+
+// --- Servicio de Reportes en PDF ---
+class ReportService {
+  constructor(dataFetcher) {
+    this.dataFetcher = dataFetcher;
+  }
+
+  getRecordsInDateRange(userEmail, vendedorFiltro, start, end) {
+    const sheet = SheetManager.getSheet('Respuestas');
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+    // Filtrar por rango de fechas (columna 0 = Timestamp)
+    const inRange = values.filter(row => {
+      const ts = new Date(row[0]).getTime();
+      return ts >= start.getTime() && ts <= end.getTime();
+    });
+
+    // Seguridad/Permisos
+    const isAdmin = this.dataFetcher.isUserAdmin(userEmail);
+    let filtered = inRange;
+
+    if (isAdmin) {
+      if (vendedorFiltro && vendedorFiltro !== 'Mostrar todos') {
+        const todos = this.dataFetcher.fetchAllVendedoresFromSheet();
+        const ven = todos.find(v => v.codigo === vendedorFiltro);
+        const nombreFiltro = ven ? ven.nombre : null;
+        if (nombreFiltro) {
+          filtered = filtered.filter(row => row[1] === nombreFiltro);
+        }
+      }
+    } else {
+      const misVendedores = this.dataFetcher.fetchVendedoresFromSheetByUser(userEmail).map(v => v.nombre);
+      filtered = filtered.filter(row => misVendedores.includes(row[1]));
+    }
+
+    // Normalización
+    return filtered.map(row => ({
+      fecha: Utilities.formatDate(new Date(row[0]), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm'),
+      vendedor: row[1],
+      clienteCodigo: row[2],
+      clienteNombre: row[3],
+      factura: row[4],
+      monto: (typeof row[5] === 'number') ? row[5].toFixed(2) : row[5],
+      formaPago: row[6],
+      bancoEmisor: row[7],
+      bancoReceptor: row[8],
+      referencia: row[9],
+      tipoCobro: row[10],
+      fechaPago: row[11],
+      observaciones: row[12],
+      creadoPor: row[13],
+    }));
+  }
+
+  buildPdf(records, meta) {
+    const template = HtmlService.createTemplateFromFile('Report');
+    template.records = records;
+    template.meta = meta;
+    const html = template.evaluate().getContent();
+    const blob = Utilities.newBlob(html, 'text/html', 'reporte.html').getAs(MimeType.PDF);
+    blob.setName(meta.filename);
+    return blob;
+  }
+}
 // #endregion
 
 // #region Funciones públicas (Interfaz de la API de Apps Script)
@@ -461,7 +528,8 @@ function getWebAppUrl() {
 }
 
 function doGet(e) {
-  const token = e.parameter.token;
+  const params = (e && e.parameter) ? e.parameter : {};
+  const token = params.token;
   const url = getWebAppUrl();
   let user = null;
 
@@ -470,12 +538,23 @@ function doGet(e) {
   }
 
   if (user) {
-    const template = HtmlService.createTemplateFromFile('Index');
+    // Permite renderizar Report.html cuando se solicita explícitamente vía ?view=report (o ?page=report / ?template=report)
+    const page = String((params.view || params.page || params.template || '')).toLowerCase();
+    const templateName = page === 'report' ? 'Report' : 'Index';
+
+    const template = HtmlService.createTemplateFromFile(templateName);
     template.user = user;
     template.url = url;
     template.token = token;
+
+    if (templateName === 'Report') {
+      // Valores por defecto para vista previa (la descarga real se realiza vía descargarRegistrosPDF)
+      template.meta = template.meta || { rangeLabel: 'Hoy y Ayer', user };
+      template.records = template.records || [];
+    }
+
     return template.evaluate()
-      .setTitle('Registro de Cobranzas')
+      .setTitle(templateName === 'Report' ? 'Reporte de Registros' : 'Registro de Cobranzas')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
   } else {
     const template = HtmlService.createTemplateFromFile('Auth');
@@ -533,6 +612,39 @@ function obtenerRegistrosEnviados(token, vendedorFiltro) {
 
 function eliminarRegistro(token, rowIndex) {
   return withAuth(token, (user) => cobranzaService.deleteRecord(rowIndex, user.email));
+}
+
+function descargarRegistrosPDF(token, vendedorFiltro) {
+  return withAuth(token, (user) => {
+    try {
+      const tz = Session.getScriptTimeZone();
+      const now = new Date();
+
+      // Rango: Ayer 00:00:00 -> Hoy 23:59:59 (en zona horaria del script)
+      const end = new Date(Utilities.formatDate(now, tz, 'yyyy/MM/dd 23:59:59'));
+      const y = new Date(now);
+      y.setDate(now.getDate() - 1);
+      const start = new Date(Utilities.formatDate(y, tz, 'yyyy/MM/dd 00:00:00'));
+
+      const reportService = new ReportService(new DataFetcher());
+      const records = reportService.getRecordsInDateRange(user.email, vendedorFiltro, start, end);
+
+      const meta = {
+        user,
+        rangeLabel: `desde ${Utilities.formatDate(start, tz, 'dd/MM/yyyy HH:mm')} hasta ${Utilities.formatDate(end, tz, 'dd/MM/yyyy HH:mm')}`,
+        filename: `Registros_${Utilities.formatDate(y, tz, 'yyyyMMdd')}_${Utilities.formatDate(now, tz, 'yyyyMMdd')}.pdf`
+      };
+
+      const pdf = reportService.buildPdf(records, meta);
+      return {
+        filename: meta.filename,
+        base64: Utilities.base64Encode(pdf.getBytes())
+      };
+    } catch (e) {
+      Logger.error(`Error en descargarRegistrosPDF: ${e.message}`);
+      throw e;
+    }
+  });
 }
 
 function sincronizarVendedoresDesdeApi() {
