@@ -151,6 +151,131 @@
 
         .factura-details { margin-top: 10px; padding: 12px; background-color: #f8fafc; border-left: 4px solid var(--primary-color); border-radius: 4px; font-size: 14px; color: var(--text-light); display: none; }
         
+        /* Multiple Invoice Selection Styles */
+        .facturas-container {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            min-height: 120px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: var(--background-card);
+        }
+        .facturas-list {
+            padding: 8px;
+        }
+        .facturas-list.disabled {
+            color: var(--text-light);
+            background-color: #f8fafc;
+        }
+        .factura-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: #ffffff;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .factura-item:hover {
+            border-color: var(--primary-color);
+            background-color: #f0f9ff;
+        }
+        .factura-item.selected {
+            border-color: var(--primary-color);
+            background-color: #dbeafe;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+        .factura-checkbox {
+            margin-right: 12px;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-color);
+        }
+        .factura-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .factura-documento {
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+        }
+        .factura-details-inline {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+        .factura-amount {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+        .no-facturas {
+            text-align: center;
+            color: var(--text-light);
+            font-style: italic;
+            margin: 20px 0;
+        }
+        
+        /* Invoice Summary Styles */
+        .invoice-summary {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 8px;
+        }
+        .invoice-summary h4 {
+            margin: 0 0 12px 0;
+            color: var(--text-dark);
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .selected-invoices-list {
+            margin-bottom: 12px;
+        }
+        .selected-invoice-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            margin: 2px 0;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .selected-invoice-doc {
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        .selected-invoice-amount {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .summary-totals {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0;
+        }
+        .total-label {
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        .total-value {
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--primary-color);
+        }
+        
         .records-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .records-table { display: block; }
         .records-table thead { display: none; }
@@ -242,15 +367,37 @@
                             <span id="clienteError" class="error">Seleccione un cliente.</span>
                         </div>
                         <div class="form-grid-full-width">
-                            <label for="factura">Factura:</label>
-                            <select id="factura" name="factura" required disabled><option value="" disabled selected>Seleccione una factura</option></select>
-                            <div id="factura-details" class="factura-details"></div>
-                            <span id="facturaError" class="error">Seleccione una factura.</span>
+                            <label for="facturas-container">Facturas:</label>
+                            <div id="facturas-container" class="facturas-container">
+                                <div id="facturas-list" class="facturas-list disabled">
+                                    <p class="no-facturas">Seleccione un cliente para ver las facturas disponibles</p>
+                                </div>
+                            </div>
+                            <span id="facturaError" class="error">Seleccione al menos una factura.</span>
+                        </div>
+                        
+                        <!-- Summary Section for Selected Invoices -->
+                        <div class="form-grid-full-width" id="invoice-summary-section" style="display: none;">
+                            <div class="invoice-summary">
+                                <h4>Resumen de Facturas Seleccionadas</h4>
+                                <div id="selected-invoices-list" class="selected-invoices-list"></div>
+                                <div class="summary-totals">
+                                    <div class="total-row">
+                                        <span class="total-label">Total en USD:</span>
+                                        <span id="total-usd" class="total-value">$0.00</span>
+                                    </div>
+                                    <div class="total-row">
+                                        <span class="total-label">Total en Bs (BCV):</span>
+                                        <span id="total-bs" class="total-value">Bs. 0,00</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="form-grid-item">
-                            <label for="monto-pagado">Monto Pagado:</label>
-                            <input type="number" id="monto-pagado" name="montoPagado" step="0.01" min="0.01" required>
-                            <span id="montoError" class="error">El monto debe ser mayor a 0.</span>
+                            <label for="monto-pagado">Monto Total a Pagar:</label>
+                            <input type="number" id="monto-pagado" name="montoPagado" step="0.01" min="0.01" readonly 
+                                   placeholder="Se calculará automáticamente">
+                            <span id="montoError" class="error">Seleccione al menos una factura.</span>
                         </div>
                         <div class="form-grid-item">
                             <label for="forma-pago">Forma de Pago:</label>
@@ -409,14 +556,153 @@
         class UiManager {
             constructor() {
                 this.elements = {
-                    notification: document.getElementById('notification'), loadingSpinner: document.getElementById('loading-spinner'), form: document.getElementById('formulario'), vendedorSelect: document.getElementById('vendedor'), clienteSelect: document.getElementById('cliente'), facturaSelect: document.getElementById('factura'), facturaDetailsDiv: document.getElementById('factura-details'), recordsTableBody: document.getElementById('registros-table-body'), recordsStatus: document.getElementById('records-status'), deleteModal: document.getElementById('delete-modal'), confirmDeleteBtn: document.getElementById('confirm-delete-btn'), cancelDeleteBtn: document.getElementById('cancel-delete-btn'), tasaOficial: document.getElementById('tasa-oficial'), logoutButton: document.getElementById('logout-button')
+                    notification: document.getElementById('notification'), 
+                    loadingSpinner: document.getElementById('loading-spinner'), 
+                    form: document.getElementById('formulario'), 
+                    vendedorSelect: document.getElementById('vendedor'), 
+                    clienteSelect: document.getElementById('cliente'), 
+                    facturasList: document.getElementById('facturas-list'),
+                    facturaDetailsDiv: document.getElementById('factura-details'), 
+                    recordsTableBody: document.getElementById('registros-table-body'), 
+                    recordsStatus: document.getElementById('records-status'), 
+                    deleteModal: document.getElementById('delete-modal'), 
+                    confirmDeleteBtn: document.getElementById('confirm-delete-btn'), 
+                    cancelDeleteBtn: document.getElementById('cancel-delete-btn'), 
+                    tasaOficial: document.getElementById('tasa-oficial'), 
+                    logoutButton: document.getElementById('logout-button'),
+                    invoiceSummarySection: document.getElementById('invoice-summary-section'),
+                    selectedInvoicesList: document.getElementById('selected-invoices-list'),
+                    totalUsd: document.getElementById('total-usd'),
+                    totalBs: document.getElementById('total-bs')
                 };
+                this.selectedInvoices = new Map(); // Map to store selected invoices
+                this.currentBcvRate = 1; // Default rate
             }
             toggleLoading(show) { this.elements.loadingSpinner.style.display = show ? 'flex' : 'none'; }
             showNotification(message, type = 'success') { this.elements.notification.textContent = message; this.elements.notification.className = `notification ${type} visible`; setTimeout(() => this.elements.notification.classList.remove('visible'), 3000); }
             showDeleteModal() { this.elements.deleteModal.style.display = 'block'; }
             hideDeleteModal() { this.elements.deleteModal.style.display = 'none'; }
-            updateBcvRate(rate) { this.elements.tasaOficial.textContent = rate ? `Tasa Oficial BCV: Bs. ${rate.toFixed(2)}` : 'Tasa BCV no disponible'; }
+            updateBcvRate(rate) { 
+                this.currentBcvRate = rate || 1;
+                this.elements.tasaOficial.textContent = rate ? `Tasa Oficial BCV: Bs. ${rate.toFixed(2)}` : 'Tasa BCV no disponible'; 
+                // Update totals if there are selected invoices
+                this.updateInvoiceSummary();
+            }
+            
+            populateInvoicesList(facturas) {
+                const facturasListElement = this.elements.facturasList;
+                
+                if (!facturas || facturas.length === 0) {
+                    facturasListElement.innerHTML = '<p class="no-facturas">No hay facturas pendientes para este cliente</p>';
+                    facturasListElement.classList.add('disabled');
+                    return;
+                }
+                
+                facturasListElement.classList.remove('disabled');
+                facturasListElement.innerHTML = '';
+                
+                facturas.forEach(factura => {
+                    const facturaItem = document.createElement('div');
+                    facturaItem.className = 'factura-item';
+                    facturaItem.innerHTML = `
+                        <input type="checkbox" class="factura-checkbox" data-documento="${factura.documento}" 
+                               data-amount="${factura.mon_sal}" data-currency="${factura.cod_mon}" data-date="${factura.fec_ini}">
+                        <div class="factura-info">
+                            <div class="factura-documento">${factura.documento}</div>
+                            <div class="factura-details-inline">Fecha: ${factura.fec_ini} | Moneda: ${factura.cod_mon}</div>
+                        </div>
+                        <div class="factura-amount">${factura.mon_sal.toFixed(2)} ${factura.cod_mon}</div>
+                    `;
+                    
+                    // Add click handler for the entire item
+                    facturaItem.addEventListener('click', (e) => {
+                        if (e.target.type !== 'checkbox') {
+                            const checkbox = facturaItem.querySelector('.factura-checkbox');
+                            checkbox.checked = !checkbox.checked;
+                            this.handleInvoiceSelection(checkbox);
+                        }
+                    });
+                    
+                    // Add change handler for checkbox
+                    const checkbox = facturaItem.querySelector('.factura-checkbox');
+                    checkbox.addEventListener('change', (e) => {
+                        this.handleInvoiceSelection(e.target);
+                    });
+                    
+                    facturasListElement.appendChild(facturaItem);
+                });
+            }
+            
+            handleInvoiceSelection(checkbox) {
+                const facturaItem = checkbox.closest('.factura-item');
+                const documento = checkbox.dataset.documento;
+                
+                if (checkbox.checked) {
+                    facturaItem.classList.add('selected');
+                    this.selectedInvoices.set(documento, {
+                        documento: documento,
+                        amount: parseFloat(checkbox.dataset.amount),
+                        currency: checkbox.dataset.currency,
+                        date: checkbox.dataset.date
+                    });
+                } else {
+                    facturaItem.classList.remove('selected');
+                    this.selectedInvoices.delete(documento);
+                }
+                
+                this.updateInvoiceSummary();
+            }
+            
+            updateInvoiceSummary() {
+                const selectedCount = this.selectedInvoices.size;
+                
+                if (selectedCount === 0) {
+                    this.elements.invoiceSummarySection.style.display = 'none';
+                    // Clear the amount field
+                    document.getElementById('monto-pagado').value = '';
+                    return;
+                }
+                
+                this.elements.invoiceSummarySection.style.display = 'block';
+                
+                // Update selected invoices list
+                let invoicesHtml = '';
+                let totalUsd = 0;
+                
+                this.selectedInvoices.forEach(invoice => {
+                    invoicesHtml += `
+                        <div class="selected-invoice-item">
+                            <span class="selected-invoice-doc">${invoice.documento}</span>
+                            <span class="selected-invoice-amount">${invoice.amount.toFixed(2)} ${invoice.currency}</span>
+                        </div>
+                    `;
+                    
+                    // Convert all amounts to USD for totaling (assuming most are already in USD)
+                    totalUsd += invoice.currency === 'USD' ? invoice.amount : invoice.amount;
+                });
+                
+                this.elements.selectedInvoicesList.innerHTML = invoicesHtml;
+                
+                // Update totals
+                const totalBs = totalUsd * this.currentBcvRate;
+                this.elements.totalUsd.textContent = `$${totalUsd.toFixed(2)}`;
+                this.elements.totalBs.textContent = `Bs. ${totalBs.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                
+                // Update the readonly amount field
+                document.getElementById('monto-pagado').value = totalUsd.toFixed(2);
+            }
+            
+            getSelectedInvoicesString() {
+                return Array.from(this.selectedInvoices.keys()).join(',');
+            }
+            
+            getSelectedInvoicesTotal() {
+                let total = 0;
+                this.selectedInvoices.forEach(invoice => {
+                    total += invoice.currency === 'USD' ? invoice.amount : invoice.amount;
+                });
+                return total.toFixed(2);
+            }
             
             // *** FUNCIÓN CORREGIDA ***
             updateRecordsTable(records) {
@@ -455,17 +741,15 @@
                 this.elements.facturaDetailsDiv.style.display = 'none';
                 this.elements.clienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un cliente</option>';
                 this.elements.clienteSelect.disabled = true;
-                this.elements.facturaSelect.innerHTML = '<option value="" disabled selected>Seleccione una factura</option>';
-                this.elements.facturaSelect.disabled = true;
+                this.elements.facturasList.innerHTML = '<p class="no-facturas">Seleccione un cliente para ver las facturas disponibles</p>';
+                this.elements.facturasList.classList.add('disabled');
+                this.selectedInvoices.clear();
+                this.elements.invoiceSummarySection.style.display = 'none';
                 document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
             }
             populateSelect(selectElement, optionsHtml, placeholder = 'Seleccione una opción') {
                 selectElement.innerHTML = `<option value="" disabled selected>${placeholder}</option>` + optionsHtml;
                 selectElement.disabled = false;
-            }
-            showFacturaDetails(factura) {
-                this.elements.facturaDetailsDiv.innerHTML = `<strong>Saldo:</strong> ${factura.mon_sal} ${factura.cod_mon} <br><strong>Fecha Emisión:</strong> ${factura.fec_ini}`;
-                this.elements.facturaDetailsDiv.style.display = 'block';
             }
         }
 
@@ -516,25 +800,24 @@
             async loadFacturas() {
                 const cliente = this.ui.elements.clienteSelect.value;
                 const vendedor = this.ui.elements.vendedorSelect.value;
-                this.ui.elements.facturaSelect.disabled = true;
+                this.ui.elements.facturasList.classList.add('disabled');
                 if (!cliente || !vendedor) return;
                 const cacheKey = `facturas_${vendedor}_${cliente}`;
                 let cachedData = clientCache.get(cacheKey);
-                if (cachedData) { this.facturasPendientes = cachedData; this.populateFacturasSelect(); return; }
+                if (cachedData) { 
+                    this.facturasPendientes = cachedData; 
+                    this.ui.populateInvoicesList(this.facturasPendientes);
+                    return; 
+                }
                 this.ui.toggleLoading(true);
                 try {
                     const facturas = await this.runGoogleScript('obtenerFacturas', sessionToken, vendedor, cliente);
                     clientCache.set(cacheKey, facturas);
                     this.facturasPendientes = facturas;
-                    this.populateFacturasSelect();
+                    this.ui.populateInvoicesList(this.facturasPendientes);
                 } catch (error) { this.ui.showNotification(`Error al cargar facturas: ${error.message}`, 'error');
                 } finally { this.ui.toggleLoading(false); }
             }
-            populateFacturasSelect() {
-                const optionsHtml = this.facturasPendientes.length > 0 ? this.facturasPendientes.map(f => `<option value="${f.documento}">${f.documento}</option>`).join('') : '<option disabled>No hay facturas pendientes</option>';
-                this.ui.populateSelect(this.ui.elements.facturaSelect, optionsHtml, 'Seleccione una factura');
-            }
-            showFacturaDetails() { const factura = this.facturasPendientes.find(f => f.documento === this.ui.elements.facturaSelect.value); if (factura) this.ui.showFacturaDetails(factura); }
             async loadBcvRate(forceRefresh = false) {
                 const cacheKey = 'bcvRate';
                 if (!forceRefresh && clientCache.get(cacheKey)) { this.ui.updateBcvRate(clientCache.get(cacheKey)); return; }
@@ -555,10 +838,20 @@
                     this.ui.updateRecordsTable(registros);
                 } catch (error) { this.ui.elements.recordsStatus.textContent = 'Error al cargar registros.'; }
             }
-            async submitForm() {
                 if (!this.validarFormulario()) { this.ui.showNotification('Corrija los errores.', 'error'); return; }
+                
+                // Get selected invoices and total amount
+                const selectedInvoicesString = this.ui.getSelectedInvoicesString();
+                const totalAmount = this.ui.getSelectedInvoicesTotal();
+                
                 const formData = new FormData(this.ui.elements.form);
                 const data = Object.fromEntries(formData.entries());
+                
+                // Override factura field with comma-separated list
+                data.factura = selectedInvoicesString;
+                // Override amount with calculated total
+                data.montoPagado = totalAmount;
+                
                 data.nombreCliente = this.ui.elements.clienteSelect.options[this.ui.elements.clienteSelect.selectedIndex].text;
                 this.ui.toggleLoading(true);
                 try {
@@ -586,8 +879,22 @@
             validarFormulario() {
                 let isValid = true;
                 document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+                
+                // Check if at least one invoice is selected
+                if (this.ui.selectedInvoices.size === 0) {
+                    document.getElementById('facturaError').style.display = 'block';
+                    isValid = false;
+                }
+                
                 const fields = [
-                    { id: 'vendedor', errorId: 'vendedorError' }, { id: 'cliente', errorId: 'clienteError' }, { id: 'factura', errorId: 'facturaError' }, { id: 'monto-pagado', errorId: 'montoError', condition: v => !v || +v <= 0 }, { id: 'forma-pago', errorId: 'formaPagoError' }, { id: 'banco_emisor', errorId: 'bancoEmisorError' }, { id: 'banco_receptor', errorId: 'bancoReceptorError' }, { id: 'nro-referencia', errorId: 'referenciaError', condition: v => v.length < 4 || v.length > 20 }, { id: 'tipo-cobro', errorId: 'tipoCobroError' }, { id: 'fecha-transferencia-pago', errorId: 'fechaError', condition: v => !v || new Date(v) > new Date() }
+                    { id: 'vendedor', errorId: 'vendedorError' }, 
+                    { id: 'cliente', errorId: 'clienteError' }, 
+                    { id: 'forma-pago', errorId: 'formaPagoError' }, 
+                    { id: 'banco_emisor', errorId: 'bancoEmisorError' }, 
+                    { id: 'banco_receptor', errorId: 'bancoReceptorError' }, 
+                    { id: 'nro-referencia', errorId: 'referenciaError', condition: v => v.length < 4 || v.length > 20 }, 
+                    { id: 'tipo-cobro', errorId: 'tipoCobroError' }, 
+                    { id: 'fecha-transferencia-pago', errorId: 'fechaError', condition: v => !v || new Date(v) > new Date() }
                 ];
                 fields.forEach(f => {
                     const el = document.getElementById(f.id);
@@ -613,7 +920,6 @@
             dataManager.loadInitialData(isNewSession);
             uiManager.elements.vendedorSelect.addEventListener('change', () => dataManager.loadClientes());
             uiManager.elements.clienteSelect.addEventListener('change', () => dataManager.loadFacturas());
-            uiManager.elements.facturaSelect.addEventListener('change', () => dataManager.showFacturaDetails());
             uiManager.elements.form.addEventListener('submit', e => { e.preventDefault(); dataManager.submitForm(); });
             uiManager.elements.recordsTableBody.addEventListener('click', e => { const deleteButton = e.target.closest('.ghost-delete'); if (deleteButton) { dataManager.setRegistroToDelete(deleteButton.dataset.rowIndex); uiManager.showDeleteModal(); } });
             document.getElementById('refresh-data-btn').addEventListener('click', () => { dataManager.clearClientCacheAndReload(); uiManager.showNotification('Caché limpiado y datos actualizados.', 'success'); });
