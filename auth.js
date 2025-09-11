@@ -20,9 +20,18 @@ initializeAuthSecret();
  */
 function processLogin(email, password) {
   try {
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Verificar estado de mantenimiento antes de proceder con el login
+    try {
+      MaintenanceService.assertOperationAllowed(normalizedEmail, { forLogin: true });
+    } catch (maintenanceError) {
+      Logger.error(`Login bloqueado por mantenimiento para: ${email}`);
+      throw maintenanceError;
+    }
+    
     const userSheet = SheetManager.getSheet('Usuarios');
     const usersData = userSheet.getDataRange().getValues();
-    const normalizedEmail = email.trim().toLowerCase();
 
     // Buscar al usuario por correo
     const userRow = usersData.find(row => row[0].toString().trim().toLowerCase() === normalizedEmail);
