@@ -362,14 +362,21 @@ class CobranzaService {
     const vendedorEncontrado = todosLosVendedores.find(v => v.codigo === data.vendedor);
     const nombreCompletoVendedor = vendedorEncontrado ? vendedorEncontrado.nombre : data.vendedor;
 
+    // data.factura now contains comma-separated invoice numbers for multiple selection
+    const invoiceCount = data.factura.split(',').length;
+    const invoiceDisplayText = invoiceCount > 1 ? `${invoiceCount} facturas: ${data.factura}` : data.factura;
+
     const row = [
       new Date(), nombreCompletoVendedor, data.cliente, data.nombreCliente, data.factura,
       parseFloat(data.montoPagado), data.formaPago, data.bancoEmisor, data.bancoReceptor,
       data.nroReferencia, data.tipoCobro, data.fechaTransferenciaPago, data.observaciones, userEmail
     ];
     sheet.appendRow(row);
-    Logger.log(`Formulario enviado por ${userEmail}. Factura: ${data.factura}`);
-    return '¡Datos recibidos con éxito!';
+    Logger.log(`Formulario enviado por ${userEmail}. ${invoiceDisplayText} - Monto: ${data.montoPagado}`);
+    
+    return invoiceCount > 1 
+      ? `¡Datos recibidos con éxito! Se registraron ${invoiceCount} facturas en un solo pago.`
+      : '¡Datos recibidos con éxito!';
   }
 
   getRecentRecords(vendedor, userEmail) {
