@@ -45,6 +45,9 @@ function processLogin(email, password) {
       throw new Error("La cuenta no está activa. Contacte al administrador.");
     }
 
+    // --- Verificar estado de mantenimiento ---
+    MaintenanceService.assertOperationAllowed(normalizedEmail, { forLogin: true });
+
     // --- Lógica de Token de Sesión ---
     const sessionCache = CacheService.getUserCache();
     const token = Utilities.getUuid();
