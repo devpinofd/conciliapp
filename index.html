@@ -387,7 +387,7 @@
         const sessionToken = "<?!= token ?>";
 
         const clientCache = {
-            TTL: 3600 * 1000,
+            TTL: 6 * 3600 * 1000,
             PREFIX: 'formCobranza_',
             set(key, data) { try { localStorage.setItem(this.PREFIX + key, JSON.stringify({ timestamp: new Date().getTime(), data })); } catch (e) { console.error("Error guardando en localStorage", e); } },
             get(key) {

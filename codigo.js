@@ -327,20 +327,20 @@ class CobranzaService {
       return data;
     }
 
-    return CacheManager.get(cacheKey, 3600, fetchFunction);
+    return CacheManager.get(cacheKey, 21600, fetchFunction);
   }
 
   getClientesHtml(codVendedor) {
-    const clientes = CacheManager.get(`clientes_${codVendedor}`, 3600, () => this.dataFetcher.fetchClientesFromApi(codVendedor));
+    const clientes = CacheManager.get(`clientes_${codVendedor}`, 21600, () => this.dataFetcher.fetchClientesFromApi(codVendedor));
     return clientes.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join('');
   }
 
   getFacturas(codVendedor, codCliente) {
-    return CacheManager.get(`facturas_${codVendedor}_${codCliente}`, 3600, () => this.dataFetcher.fetchFacturasFromApi(codVendedor, codCliente));
+    return CacheManager.get(`facturas_${codVendedor}_${codCliente}`, 21600, () => this.dataFetcher.fetchFacturasFromApi(codVendedor, codCliente));
   }
 
   getBcvRate() {
-    return CacheManager.get('bcv_rate', 3600, () => this.dataFetcher.fetchBcvRate());
+    return CacheManager.get('bcv_rate', 21600, () => this.dataFetcher.fetchBcvRate());
   }
 
   getBancos() {
@@ -571,7 +571,7 @@ function setApiQueries() {
       ORDER BY cc.fec_ini DESC`;
   props.setProperty('FACTURAS_QUERY', facturasQuery);
   
-  const vendedoresQuery = `SELECT TRIM(correo) AS correo, TRIM(cod_ven) AS cod_ven, TRIM(nom_ven) AS nom_ven, TRIM(cod_ven) AS codvendedor, CONCAT(TRIM(cod_ven), '-', TRIM(nom_ven)) AS vendedor_completo FROM vendedores;`;
+  const vendedoresQuery = `SELECT TRIM(correo) AS correo,  TRIM(cod_ven) AS codvendedor, CONCAT(TRIM(cod_ven), '-', TRIM(nom_ven)) AS vendedor_completo FROM vendedores;`;
   props.setProperty('VENDEDORES_QUERY', vendedoresQuery);
   
   const clientesQuery = `SELECT DISTINCT TRIM(COD_CLI) AS Codigo_Cliente, TRIM(NOM_CLI) AS Nombre 
