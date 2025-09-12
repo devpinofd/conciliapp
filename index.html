@@ -190,6 +190,61 @@
         
         .error { color: var(--danger-color); font-size: 14px; margin-top: 4px; display: none; }
 
+        /* Estilos para modo mantenimiento */
+        .maintenance-banner { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            background-color: #f59e0b; 
+            color: #ffffff; 
+            padding: 12px 16px; 
+            text-align: center; 
+            font-weight: 500; 
+            z-index: 1002; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+        }
+        .maintenance-banner.visible { display: block; }
+        
+        .maintenance-overlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background-color: rgba(0, 0, 0, 0.8); 
+            z-index: 1003; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .maintenance-overlay.visible { display: flex; }
+        
+        .maintenance-message { 
+            background-color: var(--background-card); 
+            padding: 32px; 
+            border-radius: 12px; 
+            text-align: center; 
+            max-width: 500px; 
+            margin: 0 16px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
+        }
+        .maintenance-message h2 { 
+            color: #f59e0b; 
+            margin-bottom: 16px; 
+            font-size: 24px; 
+        }
+        .maintenance-message p { 
+            color: var(--text-light); 
+            font-size: 16px; 
+            line-height: 1.5; 
+            margin: 0; 
+        }
+
+        /* Ajustar el contenido principal cuando hay banner */
+        body.maintenance-mode .app-container { margin-top: 60px; }
+
         /* Tablet and Desktop Styles */
         @media screen and (min-width: 768px) {
             .form-grid {
@@ -211,6 +266,19 @@
     </style>
 </head>
 <body>
+    <!-- Banner de mantenimiento -->
+    <div id="maintenance-banner" class="maintenance-banner" role="alert" aria-live="polite">
+        <span id="maintenance-banner-message">La aplicación está en mantenimiento.</span>
+    </div>
+
+    <!-- Overlay de mantenimiento para modo completo -->
+    <div id="maintenance-overlay" class="maintenance-overlay" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
+        <div class="maintenance-message">
+            <h2 id="maintenance-title">Aplicación en Mantenimiento</h2>
+            <p id="maintenance-overlay-message">La aplicación está en mantenimiento.</p>
+        </div>
+    </div>
+
     <div id="notification" class="notification"></div>
     <div id="loading-spinner" class="loading-spinner-container"><div class="spinner"></div></div>
 
@@ -605,10 +673,165 @@
             }
         }
 
+        class MaintenanceManager {
+            constructor() {
+                this.currentStatus = null;
+                this.elements = {
+                    banner: document.getElementById('maintenance-banner'),
+                    bannerMessage: document.getElementById('maintenance-banner-message'),
+                    overlay: document.getElementById('maintenance-overlay'),
+                    overlayMessage: document.getElementById('maintenance-overlay-message'),
+                    submitButton: document.querySelector('button[type="submit"]'),
+                    form: document.getElementById('formulario')
+                };
+                this.initDeleteButtonBlocker();
+            }
+
+            async checkMaintenanceStatus() {
+                try {
+                    const status = await this.runGoogleScript('getMaintenanceStatus');
+                    this.currentStatus = status;
+                    this.applyMaintenanceMode(status);
+                } catch (error) {
+                    console.error('Error verificando estado de mantenimiento:', error);
+                    // En caso de error, asumir que no hay mantenimiento
+                    this.currentStatus = { enabled: false };
+                    this.clearMaintenanceMode();
+                }
+            }
+
+            applyMaintenanceMode(status) {
+                if (!status.enabled) {
+                    this.clearMaintenanceMode();
+                    return;
+                }
+
+                // Construir mensaje con información de fecha si está disponible
+                let message = status.message;
+                if (status.until) {
+                    try {
+                        const untilDate = new Date(status.until);
+                        message += ` (hasta ${untilDate.toLocaleString('es-ES', { timeZone: 'America/Caracas' })})`;
+                    } catch (e) {
+                        // Si no se puede parsear la fecha, usar el mensaje sin fecha
+                    }
+                }
+
+                // Mostrar banner siempre que esté habilitado
+                this.showBanner(message);
+
+                // Aplicar restricciones según el modo
+                if (status.mode === 'full') {
+                    this.enableFullMaintenanceMode(message);
+                } else if (status.mode === 'read-only') {
+                    this.enableReadOnlyMode();
+                }
+            }
+
+            showBanner(message) {
+                this.elements.bannerMessage.textContent = message;
+                this.elements.banner.classList.add('visible');
+                document.body.classList.add('maintenance-mode');
+            }
+
+            enableFullMaintenanceMode(message) {
+                // Mostrar overlay
+                this.elements.overlayMessage.textContent = message;
+                this.elements.overlay.classList.add('visible');
+                
+                // Deshabilitar acciones de la aplicación
+                this.disableActions();
+            }
+
+            enableReadOnlyMode() {
+                // No mostrar overlay, pero deshabilitar envíos
+                this.disableSubmissions();
+            }
+
+            clearMaintenanceMode() {
+                this.elements.banner.classList.remove('visible');
+                this.elements.overlay.classList.remove('visible');
+                document.body.classList.remove('maintenance-mode');
+                this.enableActions();
+            }
+
+            disableActions() {
+                // Deshabilitar botón de envío
+                if (this.elements.submitButton) {
+                    this.elements.submitButton.disabled = true;
+                    this.elements.submitButton.setAttribute('data-maintenance-disabled', 'true');
+                }
+                
+                // Deshabilitar formulario
+                if (this.elements.form) {
+                    this.elements.form.style.pointerEvents = 'none';
+                    this.elements.form.style.opacity = '0.6';
+                }
+            }
+
+            disableSubmissions() {
+                // Solo deshabilitar envíos, mantener lectura
+                if (this.elements.submitButton) {
+                    this.elements.submitButton.disabled = true;
+                    this.elements.submitButton.setAttribute('data-maintenance-disabled', 'true');
+                }
+            }
+
+            enableActions() {
+                // Rehabilitar botón de envío
+                if (this.elements.submitButton && this.elements.submitButton.hasAttribute('data-maintenance-disabled')) {
+                    this.elements.submitButton.disabled = false;
+                    this.elements.submitButton.removeAttribute('data-maintenance-disabled');
+                }
+                
+                // Rehabilitar formulario
+                if (this.elements.form) {
+                    this.elements.form.style.pointerEvents = '';
+                    this.elements.form.style.opacity = '';
+                }
+            }
+
+            initDeleteButtonBlocker() {
+                // Bloquear clics en botones de eliminación durante mantenimiento
+                document.addEventListener('click', (event) => {
+                    const deleteButton = event.target.closest('.ghost-delete');
+                    if (deleteButton && this.shouldBlockAction()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+                        
+                        // Mostrar notificación
+                        if (window.uiManager) {
+                            const message = this.currentStatus?.message || 'La aplicación está en mantenimiento.';
+                            window.uiManager.showNotification(message, 'error');
+                        }
+                    }
+                }, true); // Usar captura para interceptar antes que otros handlers
+            }
+
+            shouldBlockAction() {
+                return this.currentStatus && this.currentStatus.enabled && 
+                       (this.currentStatus.mode === 'full' || this.currentStatus.mode === 'read-only');
+            }
+
+            async runGoogleScript(funcName, ...args) {
+                return new Promise((resolve, reject) => {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[funcName](...args);
+                });
+            }
+        }
+
         const uiManager = new UiManager();
         const dataManager = new DataManager(uiManager);
+        const maintenanceManager = new MaintenanceManager();
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // Hacer uiManager accesible globalmente para el MaintenanceManager
+        window.uiManager = uiManager;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar estado de mantenimiento al cargar la página
+            await maintenanceManager.checkMaintenanceStatus();
+            
             const isNewSession = new URLSearchParams(window.location.search).get('new_session') === 'true';
             dataManager.loadInitialData(isNewSession);
             uiManager.elements.vendedorSelect.addEventListener('change', () => dataManager.loadClientes());
