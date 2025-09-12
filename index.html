@@ -188,6 +188,71 @@
         .modal-content { background-color: var(--background-card); margin: 40% auto; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; }
         .modal-buttons { display: flex; justify-content: center; gap: 16px; margin-top: 20px; }
         
+        /* Maintenance Mode Styles */
+        .maintenance-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, #f59e0b, #f97316);
+            color: white;
+            text-align: center;
+            padding: 12px 16px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1002;
+            display: none;
+        }
+        .maintenance-banner.visible {
+            display: block;
+        }
+        .maintenance-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1003;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+        }
+        .maintenance-overlay.visible {
+            display: flex;
+        }
+        .maintenance-overlay-content {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 500px;
+        }
+        .maintenance-overlay h2 {
+            margin: 0 0 16px 0;
+            font-size: 24px;
+        }
+        .maintenance-overlay p {
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .app-container.maintenance-active {
+            margin-top: 60px;
+        }
+        .form-disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .form-disabled button {
+            cursor: not-allowed;
+        }
+        
         .error { color: var(--danger-color); font-size: 14px; margin-top: 4px; display: none; }
 
         /* Tablet and Desktop Styles */
@@ -211,6 +276,18 @@
     </style>
 </head>
 <body>
+    <!-- Maintenance Mode Elements -->
+    <div id="maintenance-banner" class="maintenance-banner" role="alert" aria-live="assertive">
+        <span id="maintenance-banner-message"></span>
+    </div>
+    
+    <div id="maintenance-overlay" class="maintenance-overlay" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
+        <div class="maintenance-overlay-content">
+            <h2 id="maintenance-title">Sistema en Mantenimiento</h2>
+            <p id="maintenance-overlay-message"></p>
+        </div>
+    </div>
+    
     <div id="notification" class="notification"></div>
     <div id="loading-spinner" class="loading-spinner-container"><div class="spinner"></div></div>
 
@@ -469,6 +546,180 @@
             }
         }
 
+        /**
+         * Clase para gestionar la UI del modo mantenimiento
+         */
+        class MaintenanceUI {
+            constructor() {
+                this.elements = {
+                    banner: document.getElementById('maintenance-banner'),
+                    bannerMessage: document.getElementById('maintenance-banner-message'),
+                    overlay: document.getElementById('maintenance-overlay'),
+                    overlayMessage: document.getElementById('maintenance-overlay-message'),
+                    appContainer: document.querySelector('.app-container')
+                };
+                this.currentStatus = null;
+                this.lockSelectors = [
+                    '#formulario button[type="submit"]', // Botón enviar cobranza
+                    '.button-primary' // Otros botones primarios
+                ];
+            }
+
+            /**
+             * Inicializa el modo mantenimiento consultando el estado del servidor
+             * @param {string} context - Contexto de la aplicación ('app' o 'login')
+             * @param {Array} lockSelectors - Selectores CSS de elementos a deshabilitar
+             */
+            async initialize(context = 'app', lockSelectors = null) {
+                if (lockSelectors) {
+                    this.lockSelectors = lockSelectors;
+                }
+                
+                try {
+                    await this.checkMaintenanceStatus();
+                } catch (error) {
+                    console.error('Error al verificar estado de mantenimiento:', error);
+                    // En caso de error, no mostrar mantenimiento para no bloquear la app
+                }
+            }
+
+            /**
+             * Consulta el estado de mantenimiento del servidor
+             */
+            async checkMaintenanceStatus() {
+                return new Promise((resolve, reject) => {
+                    google.script.run
+                        .withSuccessHandler((status) => {
+                            this.applyMaintenanceStatus(status);
+                            resolve(status);
+                        })
+                        .withFailureHandler((error) => {
+                            console.error('Error al obtener estado de mantenimiento:', error);
+                            // En caso de error, aplicar estado seguro (sin mantenimiento)
+                            this.applyMaintenanceStatus({ enabled: false });
+                            reject(error);
+                        })
+                        .getMaintenanceStatus();
+                });
+            }
+
+            /**
+             * Aplica el estado de mantenimiento a la UI
+             * @param {object} status - Estado de mantenimiento del servidor
+             */
+            applyMaintenanceStatus(status) {
+                this.currentStatus = status;
+                
+                if (!status.enabled) {
+                    this.hideMaintenance();
+                    return;
+                }
+
+                // Mostrar banner con el mensaje
+                this.showBanner(status.message);
+
+                // Aplicar restricciones según el modo
+                if (status.mode === 'full') {
+                    this.showOverlay(status.message);
+                    this.disableForm(true);
+                } else if (status.mode === 'read-only') {
+                    this.disableForm(false); // Solo deshabilitar envío, no toda la UI
+                }
+            }
+
+            /**
+             * Muestra el banner de mantenimiento
+             * @param {string} message - Mensaje a mostrar
+             */
+            showBanner(message) {
+                this.elements.bannerMessage.textContent = message;
+                this.elements.banner.classList.add('visible');
+                
+                // Añadir margen superior al contenedor principal
+                if (this.elements.appContainer) {
+                    this.elements.appContainer.classList.add('maintenance-active');
+                }
+            }
+
+            /**
+             * Muestra el overlay modal de mantenimiento
+             * @param {string} message - Mensaje a mostrar
+             */
+            showOverlay(message) {
+                this.elements.overlayMessage.textContent = message;
+                this.elements.overlay.classList.add('visible');
+                
+                // Establecer foco en el overlay para accesibilidad
+                this.elements.overlay.setAttribute('tabindex', '-1');
+                this.elements.overlay.focus();
+            }
+
+            /**
+             * Deshabilita elementos del formulario según el modo
+             * @param {boolean} fullDisable - Si es true, deshabilita toda la UI; si es false, solo botones de envío
+             */
+            disableForm(fullDisable = true) {
+                if (fullDisable) {
+                    // Modo completo: deshabilitar todo el formulario
+                    const form = document.getElementById('formulario');
+                    if (form) {
+                        form.classList.add('form-disabled');
+                    }
+                } else {
+                    // Modo solo lectura: deshabilitar solo botones de envío
+                    this.lockSelectors.forEach(selector => {
+                        const elements = document.querySelectorAll(selector);
+                        elements.forEach(element => {
+                            element.disabled = true;
+                            element.setAttribute('data-maintenance-disabled', 'true');
+                            element.title = 'Función deshabilitada durante mantenimiento';
+                        });
+                    });
+                }
+            }
+
+            /**
+             * Oculta todos los elementos de mantenimiento y restaura la funcionalidad
+             */
+            hideMaintenance() {
+                this.elements.banner.classList.remove('visible');
+                this.elements.overlay.classList.remove('visible');
+                
+                if (this.elements.appContainer) {
+                    this.elements.appContainer.classList.remove('maintenance-active');
+                }
+                
+                // Restaurar funcionalidad del formulario
+                this.enableForm();
+            }
+
+            /**
+             * Restaura la funcionalidad del formulario
+             */
+            enableForm() {
+                // Remover clase de deshabilitado del formulario
+                const form = document.getElementById('formulario');
+                if (form) {
+                    form.classList.remove('form-disabled');
+                }
+                
+                // Rehabilitar botones específicos
+                document.querySelectorAll('[data-maintenance-disabled="true"]').forEach(element => {
+                    element.disabled = false;
+                    element.removeAttribute('data-maintenance-disabled');
+                    element.removeAttribute('title');
+                });
+            }
+
+            /**
+             * Obtiene el estado actual de mantenimiento
+             * @returns {object|null} Estado actual o null si no se ha cargado
+             */
+            getCurrentStatus() {
+                return this.currentStatus;
+            }
+        }
+
         class DataManager {
             constructor(ui) { this.ui = ui; this.facturasPendientes = []; this.currentVendedor = null; this.registroToDelete = null; }
             async loadInitialData(forceRefresh = false) {
@@ -556,6 +807,19 @@
                 } catch (error) { this.ui.elements.recordsStatus.textContent = 'Error al cargar registros.'; }
             }
             async submitForm() {
+                // Verificar estado de mantenimiento antes de proceder
+                const maintenanceStatus = maintenanceUI.getCurrentStatus();
+                if (maintenanceStatus && maintenanceStatus.enabled) {
+                    if (maintenanceStatus.mode === 'full') {
+                        this.ui.showNotification('Sistema en mantenimiento. No se pueden realizar operaciones.', 'error');
+                        return;
+                    }
+                    if (maintenanceStatus.mode === 'read-only') {
+                        this.ui.showNotification('Sistema en modo solo lectura. No se pueden enviar datos.', 'error');
+                        return;
+                    }
+                }
+                
                 if (!this.validarFormulario()) { this.ui.showNotification('Corrija los errores.', 'error'); return; }
                 const formData = new FormData(this.ui.elements.form);
                 const data = Object.fromEntries(formData.entries());
@@ -566,10 +830,33 @@
                     this.ui.showNotification(response, 'success');
                     this.ui.resetForm();
                     await this.loadRecords(this.currentVendedor, true);
-                } catch (error) { this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
+                } catch (error) { 
+                    // Verificar si el error es por mantenimiento
+                    if (error.message && error.message.includes('mantenimiento')) {
+                        this.ui.showNotification(`Error: ${error.message}`, 'error');
+                        // Actualizar estado de mantenimiento si cambió
+                        maintenanceUI.checkMaintenanceStatus().catch(console.error);
+                    } else {
+                        this.ui.showNotification(`Error al enviar: ${error.message}`, 'error');
+                    }
                 } finally { this.ui.toggleLoading(false); }
             }
             async deleteRecord() {
+                // Verificar estado de mantenimiento antes de proceder
+                const maintenanceStatus = maintenanceUI.getCurrentStatus();
+                if (maintenanceStatus && maintenanceStatus.enabled) {
+                    if (maintenanceStatus.mode === 'full') {
+                        this.ui.showNotification('Sistema en mantenimiento. No se pueden realizar operaciones.', 'error');
+                        this.ui.hideDeleteModal();
+                        return;
+                    }
+                    if (maintenanceStatus.mode === 'read-only') {
+                        this.ui.showNotification('Sistema en modo solo lectura. No se pueden eliminar registros.', 'error');
+                        this.ui.hideDeleteModal();
+                        return;
+                    }
+                }
+                
                 this.ui.hideDeleteModal();
                 if (this.registroToDelete) {
                     this.ui.toggleLoading(true);
@@ -577,7 +864,15 @@
                         const response = await this.runGoogleScript('eliminarRegistro', sessionToken, this.registroToDelete);
                         this.ui.showNotification(response, 'success');
                         await this.loadRecords(this.currentVendedor, true);
-                    } catch (error) { this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
+                    } catch (error) { 
+                        // Verificar si el error es por mantenimiento
+                        if (error.message && error.message.includes('mantenimiento')) {
+                            this.ui.showNotification(`Error: ${error.message}`, 'error');
+                            // Actualizar estado de mantenimiento si cambió
+                            maintenanceUI.checkMaintenanceStatus().catch(console.error);
+                        } else {
+                            this.ui.showNotification(`Error al eliminar: ${error.message}`, 'error');
+                        }
                     } finally { this.ui.toggleLoading(false); }
                 }
             }
@@ -607,8 +902,12 @@
 
         const uiManager = new UiManager();
         const dataManager = new DataManager(uiManager);
+        const maintenanceUI = new MaintenanceUI();
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Inicializar modo mantenimiento antes que cualquier otra cosa
+            await maintenanceUI.initialize('app', ['#formulario button[type="submit"]']);
+            
             const isNewSession = new URLSearchParams(window.location.search).get('new_session') === 'true';
             dataManager.loadInitialData(isNewSession);
             uiManager.elements.vendedorSelect.addEventListener('change', () => dataManager.loadClientes());
