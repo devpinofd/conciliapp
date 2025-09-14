@@ -528,7 +528,18 @@
             }
 
             resetForm() {
+                // Guardar el vendedor seleccionado antes de hacer reset
+                const selectedVendedor = this.elements.vendedorSelect.value;
+                
+                // Realizar el reset del formulario
                 this.elements.form.reset();
+                
+                // Restaurar el valor del select de vendedor si había uno previamente seleccionado
+                if (selectedVendedor) {
+                    this.elements.vendedorSelect.value = selectedVendedor;
+                }
+                
+                // Mantener el resto de la lógica existente
                 this.elements.facturaDetailsDiv.style.display = 'none';
                 this.elements.clienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un cliente</option>';
                 this.elements.clienteSelect.disabled = true;
