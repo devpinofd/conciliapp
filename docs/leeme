@@ -1,0 +1,25 @@
+# Documentación técnica de Conciliapp
+
+Este directorio contiene la documentación técnica del proyecto, preparada para un ciclo típico de desarrollo ágil y basada en mejores prácticas y principios SOLID.
+
+Índice rápido:
+- Proceso Ágil: [agile-process.md](./agile-process.md)
+- Backlog inicial: [backlog.md](./backlog.md)
+- Arquitectura y módulos: [architecture.md](./architecture.md)
+- Principios SOLID aplicados: [solid.md](./solid.md)
+- Estándares de código: [coding-standards.md](./coding-standards.md)
+- Contratos de API (server-side GAS): [api-contracts.md](./api-contracts.md)
+- Modelo de datos (Sheets): [data-model.md](./data-model.md)
+- Estrategia de caché (SWR/Locks): [caching.md](./caching.md)
+- Seguridad y cumplimiento: [security.md](./security.md)
+- Estrategia de pruebas: [testing.md](./testing.md)
+- Branching y flujo de PRs: [branching.md](./branching.md)
+- CI/CD y despliegue (GAS + GitHub): [ci-cd.md](./ci-cd.md)
+- Observabilidad y métricas: [observability.md](./observability.md)
+- Runbook de operaciones y mantenimiento: [runbook.md](./runbook.md)
+- ADRs (decisiones de arquitectura): [adr/0001-caching-migration.md](./adr/0001-caching-migration.md)
+
+Convenciones:
+- Todo contenido es Markdown (GFM).
+- PRs deben actualizar documentación relevante al cambiar comportamientos.
+- Enlaces a archivos del repo deben usar rutas relativas o URLs GitHub.
