@@ -1,0 +1,18 @@
+# Principios SOLID aplicados
+
+- SRP (Responsabilidad Única)
+  - Logger, CacheManager/CacheUtil, ApiHandler, SheetManager, AuthManager y MaintenanceService están separados por responsabilidad.
+- OCP (Abierto/Cerrado)
+  - `CacheUtil` admite nuevos recursos y claves sin modificar su núcleo; `MaintenanceService` extensible a nuevos modos.
+- LSP (Sustitución de Liskov)
+  - Contratos estables para funciones expuestas a cliente (mismos formatos de entrada/salida).
+- ISP (Segregación de Interfaces)
+  - El cliente solo invoca endpoints específicos, el backend mantiene servicios separados.
+- DIP (Inversión de Dependencias)
+  - Servicios de dominio dependen de abstracciones (fetchers, utilidades de caché) y no de implementaciones concretas.
+
+Buenas prácticas complementarias:
+- Inyección de dependencias ligera (paso de funciones `fetch*Fn` a `CacheUtil`)
+- Funciones puras donde sea posible
+- Validaciones y errores significativos
+- “Fail fast” + fallback con SWR
