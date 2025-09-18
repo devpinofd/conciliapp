@@ -1,0 +1,197 @@
+# Resumen técnico de estrategias de caché y evidencias
+
+Este informe resume el estado actual y el plan de evolución de caché en Conciliapp, con evidencias de código y documentación del repositorio.
+
+## Estado actual (implementado)
+
+- Cacheo de sesión de usuario con CacheService (UserCache)
+  - Evidencia: generación y validación de tokens en `auth.js`
+    - Generación con TTL 6h:
+      ```javascript
+      const sessionCache = CacheService.getUserCache();
+      const token = Utilities.getUuid();
+      const userData = { email: normalizedEmail, name: userRow[3] || ... };
+      sessionCache.put(token, JSON.stringify(userData), 21600);
+      ```
+      [Ver auth.js](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/auth.js#L63-L88)
+    - Lectura/validación:
+      ```javascript
+      const sessionCache = CacheService.getUserCache();
+      const userDataJson = sessionCache.get(token);
+      ```
+      [Ver auth.js](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/auth.js#L97-L126)
+
+- Caché general basada en PropertiesService con TTL propio (CacheManager)
+  - Evidencia: `CacheManager.get(...)` persiste JSON con `timestamp` en Script Properties:
+    ```javascript
+    const cache = PropertiesService.getScriptProperties();
+    const cached = cache.getProperty(key);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < ttlSeconds * 1000) { return data; }
+    }
+    const data = fetchFunction(...args);
+    cache.setProperty(key, JSON.stringify({ timestamp: Date.now(), data }));
+    ```
+    [Ver codigo.js](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/codigo.js#L48-L86)
+
+- Políticas declarativas en documentación del proyecto
+  - “Caché: Usa PropertiesService con TTL; evita clear() para preservar datos sensibles.”
+    [Ver promtp.txt](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/promtp.txt#L34-L48)
+  - “Tasa BCV desde API (caché de 3600s).”
+    [Ver promtp.txt](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/promtp.txt#L21-L27)
+  - “getBcvRate(), getBancos(): Cacheados.”
+    [Ver context.txt](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/context.txt#L106-L117)
+
+- Rate limiting propuesto usando CacheService (para login)
+  - Evidencia: lineamientos en documentación técnica (menciona rate limiting con CacheService)
+    [Ver promtp.txt](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/promtp.txt#L46-L64)
+
+
+## Plan de evolución (documentado y con snippets listos)
+
+- Migración a CacheService con Stale-While-Revalidate (SWR), LockService y fallback “sombra” en PropertiesService
+  - Resumen del plan:
+    - SWR: servir datos stale durante refresco.
+    - LockService: evitar “cache stampede”.
+    - Invalidación por prefijo y versionado lógico.
+    - Precalentamiento con triggers de tiempo.
+    - Observabilidad (métricas básicas).
+    [Ver mejora_cache.md (inicio)](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L3-L31)
+
+  - Utilidad `CacheUtil` (SWR + Lock + sombra):
+    ```javascript
+    var CacheUtil = (function() {
+      var CACHE_TTL_MAX = 21600; // 6h
+      function getScriptCache() { return CacheService.getScriptCache(); }
+      function getShadow(key) { return PropertiesService.getScriptProperties().getProperty('shadow:'+key); }
+      function getWithSWR({key, ttlSeconds, staleTtlSeconds, rebuildFn, ...}) {
+        // 1) lee CacheService, 2) sombra en PropertiesService, 3) lock y rebuild
+      }
+      return { get, set, getWithSWR, invalidateByPrefix, clampTtl };
+    })();
+    ```
+    [Ver mejora_cache.md (CacheUtil)](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L48-L116)
+    [SWR/lock y flujo](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L117-L150)
+
+- Patrones de clave y TTL por recurso
+  - Ejemplos recomendados:
+    - `script:vendedores:{email}` — 6h
+    - `script:clientes:{codVendedor}` — 6h
+    - `script:facturas:{vendedor}:{cliente}` — 30–60min
+    - `script:bcv` — 60min
+    - `script:bancos` — 72h
+    - `script:registros:{scope}:{vendedor|all}:page={n}` — 2–5min
+    [Ver mejora_cache.md (patrones y TTL)](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L32-L45)
+
+- Snippets de integración por recurso (SWR)
+  - Clientes:
+    ```javascript
+    return CacheUtil.getWithSWR({
+      key: 'script:clientes:' + codVendedor,
+      ttlSeconds: 21600, staleTtlSeconds: 43200, rebuildFn: () => ...
+    });
+    ```
+    [Ver clientes](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L237-L257)
+  - Facturas:
+    ```javascript
+    return CacheUtil.getWithSWR({
+      key: 'script:facturas:' + codVendedor + ':' + codCliente,
+      ttlSeconds: 3600, staleTtlSeconds: 7200, rebuildFn: () => ...
+    });
+    ```
+    [Ver facturas](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L254-L272)
+  - BCV:
+    ```javascript
+    return CacheUtil.getWithSWR({
+      key: 'script:bcv',
+      ttlSeconds: 3600, staleTtlSeconds: 10800, rebuildFn: fetchBcvFn
+    });
+    ```
+    [Ver BCV](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L273-L293)
+  - Bancos:
+    ```javascript
+    return CacheUtil.getWithSWR({
+      key: 'script:bancos',
+      ttlSeconds: 259200, staleTtlSeconds: 604800, rebuildFn: fetchBancosFn
+    });
+    ```
+    [Ver bancos](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L294-L311)
+  - Registros recientes (paginado):
+    ```javascript
+    return CacheUtil.getWithSWR({
+      key: 'script:registros:' + scopeKey + ':' + (vendedorKey || 'all') + ':page=' + (page || 1),
+      ttlSeconds: 180, staleTtlSeconds: 900, rebuildFn: () => ...
+    });
+    ```
+    [Ver registros recientes](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L312-L333)
+
+- Invalidación por prefijo y versionado lógico
+  - Sombra: limpieza por prefijo en PropertiesService
+  - CacheService: versionar claves `script:vendedores:v{N}:...` y aumentar N
+  - Ejemplo utilitario e indicaciones:
+    [Ver invalidación](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L334-L356)
+
+- Precalentamiento (prewarm) con triggers de tiempo
+  - Trigger diario 6:00am para `vendedores admin`, `bancos`, `bcv`, opcional clientes top
+  - Ejemplo de implementación:
+    ```javascript
+    function prewarmCaches() {
+      cargarVendedoresHtml(true, ...);
+      obtenerBancosConCache(...);
+      obtenerTasaBCVConCache(...);
+    }
+    function crearTriggerPrewarm() {
+      ScriptApp.newTrigger('prewarmCaches').timeBased().atHour(6).everyDays(1).create();
+    }
+    ```
+    [Ver prewarm](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L357-L396)
+
+- Consideraciones de tamaño y segmentación (límite ~100KB/clave)
+  - Sharding y recomposición, o construir HTML en cliente
+  - JSON compacto
+  [Ver límites/segmentación](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L398-L406)
+
+- Observabilidad básica (métricas)
+  - `cache_hit`, `cache_miss`, `rebuild_ok`, `rebuild_error` por clave/prefijo
+  [Ver observabilidad](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/mejora_cache.md#L421-L437)
+
+- Afinidad con la estrategia de “particionamiento lógico”
+  - Minimizar lecturas y cachear metadatos/índices en CacheService (+ sombra)
+  - Precalentar cachés “recientes” e índices a primera hora
+  [Ver particionamiento (cachear índices y prewarm)](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/Particionamiento%20l%C3%B3gico%20de%20datos%20(GAS).md#L34-L89)
+  [Ver plan: triggers de precalentamiento](https://github.com/devpinofd/conciliapp/blob/1d932b7de37fc6bf1824f1d826f213995ca0108b/Particionamiento%20l%C3%B3gico%20de%20datos%20(GAS).md#L223-L289)
+
+## Evaluación de adecuación
+
+- Alineación con buenas prácticas actuales:
+  - Sí: uso de CacheService, SWR, locks, TTLs por dominio, invalidación por versión, prewarm y métricas.
+- Estado de adopción:
+  - Mixto: CacheService ya se usa para sesiones; la capa `CacheManager` (PropertiesService) sigue activa para datos de negocio; la migración a `CacheUtil` está documentada y lista, pero no se evidencia su integración completa aún.
+- Riesgos mitigados:
+  - Stampede controlado con LockService (en `CacheUtil`).
+  - Resiliencia “stale” con sombra en PropertiesService.
+  - Límite de tamaño contemplado (sharding).
+- Oportunidades de mejora:
+  - Completar la migración por fases indicada en `mejora_cache.md`.
+  - Establecer versionado de claves por prefijo para invalidar globalmente sin listar.
+  - Incorporar métricas de caché y ajustar TTLs basados en uso real.
+  - Añadir rate limiting efectivo en login (mencionado, no evidenciado con código aún).
+  - Cifrar/evitar data sensible en “sombra” si aplica.
+
+## Checklist recomendado (siguiente sprint)
+
+1) Añadir archivo `utils/cacheUtil.gs` al proyecto GAS y publicar.
+2) Migrar “BCV” y “Bancos” a `CacheUtil.getWithSWR`.
+3) Migrar “Vendedores”, “Clientes”, “Facturas”, “Registros recientes”.
+4) Implementar versionado por prefijo (p.ej. `ver:vendedores` en Script Properties).
+5) Activar trigger `prewarmCaches` diario.
+6) Telemetría simple de caché en ‘Auditoria’.
+7) Retirar uso de `CacheManager` (PropertiesService) tras 1–2 semanas de sombra.
+
+## Notas sobre búsqueda de evidencias
+
+- Los resultados de búsqueda mostrados pueden ser incompletos. Puedes explorar más en GitHub:
+  - Código con CacheService: https://github.com/search?q=repo%3Adevpinofd%2Fconciliapp+CacheService&type=code
+  - Propuesta de mejora de caché (SWR/Lock): https://github.com/search?q=repo%3Adevpinofd%2Fconciliapp+mejora_cache.md&type=code
+  - Uso de PropertiesService en caché: https://github.com/search?q=repo%3Adevpinofd%2Fconciliapp+PropertiesService&type=code
