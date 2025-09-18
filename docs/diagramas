@@ -1,0 +1,74 @@
+```mermaid
+flowchart TD
+    A[Usuario] -->|Ingresa Credenciales| B[AuthManager]
+    B -->|Valida| C{¿Credenciales Válidas?}
+    C -->|Sí| D[Logger]
+    D -->|Registra Login| E[CacheManager]
+    E -->|Almacena Sesión| F[Dashboard]
+    C -->|No| G[Error de Login]
+```
+
+```mermaid
+flowchart TD
+    H[Usuario] -->|Solicita Registro| I[ApiHandler]
+    I -->|Envía Datos| J[AuthManager]
+    J -->|Valida Datos| K{¿Datos Válidos?}
+    K -->|Sí| L[Logger]
+    L -->|Registra Usuario| M[CacheManager]
+    M -->|Almacena Información| N[Confirmación de Registro]
+    K -->|No| O[Error de Registro]
+```
+
+```mermaid
+flowchart TD
+    P[Inicio de Conciliación] --> Q[DataFetcher]
+    Q --> R[SheetManager]
+    R --> S{¿Datos Conciliados?}
+    S -->|Sí| T[Logger]
+    T -->|Registra Conciliación| U[Fin de Conciliación]
+    S -->|No| V[Auditoría]
+    V --> W[Error de Conciliación]
+```
+
+```mermaid
+classDiagram
+    class ApiHandler {
+        +handleRequest()
+    }
+    class AuthManager {
+        +validateUser()
+    }
+    class Logger {
+        +log()
+    }
+    class CacheManager {
+        +cacheData()
+    }
+    class DataFetcher {
+        +fetchData()
+    }
+    class SheetManager {
+        +manageSheets()
+    }
+    class CobranzaService {
+        +processCobranza()
+    }
+    class MaintenanceService {
+        +performMaintenance()
+    }
+    AuthManager --> ApiHandler
+    Logger --> CacheManager
+    DataFetcher --> SheetManager
+    CobranzaService --> AuthManager
+    MaintenanceService --> CacheManager
+```
+
+```mermaid
+flowchart LR
+    A[Frontend] -->|Comunica con| B[ApiHandler]
+    B -->|Llama a| C[AuthManager]
+    B -->|Accede a| D[DataFetcher]
+    D -->|Interactúa con| E[SheetManager]
+    C -->|Usa| F[CacheManager]
+    G[APIs Externas] -->|Se comunica con| B
+```
