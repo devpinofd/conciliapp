@@ -1,0 +1,21 @@
+# Modelo de datos (Google Sheets)
+
+Hojas y columnas recomendadas:
+
+- Usuarios
+  - Columnas: Correo, Contraseña (hash HMAC-SHA256), Estado, FechaRegistro, Name?, Salt? (futuro)
+- Auditoria
+  - Columnas: FechaHora, Usuario, Nivel, Mensaje, Contexto?
+- Respuestas (cobranzas)
+  - Columnas: Fecha, Usuario, Vendedor, ClienteCodigo, ClienteNombre, Monto, FormaPago, Banco, Referencia, TipoCobro, FechaOperacion, Observaciones, ...
+- Registros Eliminados
+  - Copia de columnas de Respuestas + metadata de eliminación (quién/cuándo/motivo)
+- Bitacora
+  - Columnas (sugeridas según diseño): ID_Log, FechaHora, Usuario, Entidad_Tipo, Entidad_ID, FacturasCsv, ClienteCodigo, ClienteNombre, TipoEvento, Subtipo, Descripcion, DatosJson, MontoAfectado, Moneda, SaldoGen, SaldoApl, SaldoRem, Referencia, Vinculos, Hash, ObservacionesPrivadas
+- Particiones de registros (propuesta)
+  - REG_YYYY_MM: misma estructura que Respuestas para rotación mensual
+  - Vistas LN_*: LN_ALL y LN_{VEND} con últimos N
+
+Claves y restricciones:
+- IDs únicos donde aplique (bitácora)
+- Validaciones de tipos (números/fechas) en servidor; formato en cliente
