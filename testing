@@ -1,0 +1,20 @@
+# Estrategia de pruebas
+
+Niveles de prueba:
+- Unitarias: lógica pura y utilidades (transformaciones, validaciones)
+- Integración (GAS): interacción con Sheets simuladas con mocks
+- Contratos: shape de respuestas de endpoints server-side invocados desde cliente
+- E2E ligera: flujos críticos (login -> captura -> visualización)
+
+Herramientas:
+- Si se adopta clasp: Node + Jest con `@types/google-apps-script` y stubs/mocks
+- Pruebas manuales en editor GAS para funciones con permisos (UrlFetchApp/Sheets)
+- Simulación de `google.script.run` en cliente (mocks)
+
+Cobertura objetivo:
+- >70% en módulos de negocio (sin contar glue-code Apps Script)
+
+Estrategias:
+- Mocks de PropertiesService, CacheService, UrlFetchApp
+- Test de caché: cache_hit vs miss, SWR fallback, locks
+- Test de mantenimiento: modos y asserts
