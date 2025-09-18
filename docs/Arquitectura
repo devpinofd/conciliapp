@@ -1,0 +1,37 @@
+# Arquitectura y módulos
+
+Stack:
+- Google Apps Script (server)
+- Google Sheets (persistencia)
+- HTML/JS (cliente, Apps Script HTML Service)
+- Integraciones externas: eFactory (UrlFetchApp), BCV (API), Bancos (fuente Sheets/API)
+- Caché: CacheService (Script/User) + PropertiesService (sombra persistente)
+
+Módulos principales (existentes en repo):
+- Logger: logging a consola y Sheet 'Auditoria'
+- CacheManager: caché con TTL en PropertiesService (a migrar)
+- ApiHandler: encapsula llamadas a eFactory (UrlFetchApp)
+- SheetManager: acceso/creación de hojas y headers
+- DataFetcher: orquestación de fetches (API + Sheets)
+- CobranzaService: lógica de cobranzas (captura, validaciones)
+- AuthManager (auth.js): login/registro, tokens, `CacheService.getUserCache()`
+- MaintenanceService (maintenance.js): modos de mantenimiento, permisos y assert
+
+Evolución prevista:
+- `CacheUtil` como capa estándar de caché (CacheService primario + sombra)
+- Patrones SWR + LockService para evitar stampede
+- Prewarm y versionado de claves por prefijo
+- Particionamiento lógico por mes y vistas LN_* para “recientes”
+
+Diagramas lógicos (alto nivel):
+- Cliente -> google.script.run -> Funciones GAS (Auth/Cobranza/Consultas)
+- GAS -> CacheService (lectura rápida)
+- GAS -> PropertiesService (sombra/config)
+- GAS -> Google Sheets (persistencia auditable)
+- GAS -> APIs externas (eFactory/BCV) con caché para mitigar latencia/cuotas
+
+No funcionales:
+- Rendimiento: p95 < 1.5s para vistas cacheadas, < 3s en primer build
+- Resiliencia: servir stale en fallos de proveedor
+- Seguridad: secrets en Script Properties, hashing HMAC-SHA256, rate limiting
+- Observabilidad: auditoría en Sheet + métricas de caché
