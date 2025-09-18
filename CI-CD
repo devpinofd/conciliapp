@@ -1,0 +1,26 @@
+# CI/CD y despliegue
+
+Repositorio: GitHub (devpinofd/conciliapp)
+Destino: Google Apps Script (Web App + vinculada a Sheet)
+
+Propuesta:
+- Adoptar clasp para sincronizar código entre GitHub y GAS
+- GitHub Actions:
+  - CI: lint + tests en cada PR
+  - CD (opcional): deploy a script (staging) al merge en main, con aprobación manual para prod
+
+Pipeline (ejemplo alto nivel):
+- job: ci
+  - setup Node, instalar deps
+  - ejecutar linters/tests
+- job: deploy (manual/condicional)
+  - usar `clasp` con credenciales (GCP Service Account)
+  - `clasp push` a scriptId de staging
+  - ejecutar script GAS de `crearTriggerPrewarm` post-deploy si aplica
+
+Versionado Apps Script:
+- Crear versión del script y despliegue de Web App
+- Mantener `appsscript.json` con scopes mínimos
+
+Backups:
+- Export periódico del proyecto GAS a Git (clasp) o viceversa
