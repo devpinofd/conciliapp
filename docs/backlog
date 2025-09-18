@@ -1,0 +1,33 @@
+# Backlog inicial
+
+Epics:
+- EP1: Autenticación y control de acceso
+- EP2: Gestión de cobranzas (captura, validación, auditoría)
+- EP3: Visualización y búsqueda de registros
+- EP4: Integraciones (API eFactory, BCV, Bancos)
+- EP5: Observabilidad y auditoría
+- EP6: Rendimiento y caché (SWR/Locks/Prewarm)
+- EP7: Operaciones y Mantenimiento (modo mantenimiento, rotación mensual, particiones)
+
+Historias (ejemplos iniciales):
+- US-Auth-01: Como usuario quiero iniciar sesión para acceder a la app
+  - Criterios: token de sesión (expira 6h), invalidación en logout, rate limiting
+- US-Auth-02: Como admin quiero configurar lista de admins y modo mantenimiento
+  - Criterios: modos full/read-only, bypass administradores, banner/overlay UI
+- US-Cob-01: Como vendedor quiero registrar un pago con validaciones
+  - Criterios: campos obligatorios, persistencia en 'Respuestas', bitácora
+- US-Ref-01: Como usuario quiero ver mis registros recientes paginados
+  - Criterios: filtros por vendedor, paginación, performance <1s p95 con caché
+- US-Ext-BCV-01: Como sistema quiero cachear la tasa BCV 60min con fallback stale
+- US-Ext-Bancos-01: Como sistema quiero cachear bancos 72h con prewarm diario
+- US-Perf-01: Como sistema quiero precalentar cachés y evitar stampede con locks
+- US-Obs-01: Como admin quiero ver métricas básicas de cache_hits/miss en Auditoría
+- US-Data-01: Como sistema quiero rotar hojas por mes y mantener vistas LN_* actualizadas
+
+Refinamiento técnico:
+- T-Cache-01: Implementar util `CacheUtil` (SWR + LockService + sombra)
+- T-Cache-02: Migrar BCV/Bancos a `CacheUtil`
+- T-Cache-03: Migrar Vendedores/Clientes/Facturas a `CacheUtil`
+- T-Ops-01: Trigger `prewarmCaches` 6:00am
+- T-Ops-02: Implementar rotación mensual y particiones
+- T-Sec-01: Rate limiting de login con CacheService (intentos fallidos)

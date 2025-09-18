@@ -1,0 +1,24 @@
+# Estándares de código
+
+JavaScript/Apps Script:
+- ECMAScript compatible GAS; evitar APIs obsoletas
+- Nombres descriptivos, casing consistente (camelCase en funciones/variables)
+- Evitar efectos colaterales innecesarios; preferir funciones puras
+- Manejo explícito de errores (try/catch con logs y mensajes claros)
+- JSON compacto para caché; evitar estructuras pesadas
+- No exponer secretos en código; usar Script Properties
+
+Estructura:
+- Separar por módulos: auth.js, maintenance.js, codigo.js, etc.
+- Utilidades en archivos dedicados (e.g., `utils/cacheUtil.gs`)
+- Comentarios JSDoc para funciones públicas
+- Mensajes de commit con Conventional Commits (feat:, fix:, docs:, refactor:, chore:)
+
+Linters y formateo:
+- Prettier para formateo
+- ESLint con reglas para Apps Script (si se usa clasp con `@types/google-apps-script`)
+
+PRs:
+- Cambios atómicos
+- Tests incluidos cuando aplique
+- Documentación actualizada

@@ -1,0 +1,37 @@
+# Contratos de API (Apps Script server-side)
+
+Convenciones:
+- Todas las funciones son invocadas vía `google.script.run.withSuccessHandler(...).withFailureHandler(...).fn(args...)`.
+- Respuestas JSON con estructura estable: `{ status: 'SUCCESS' | 'ERROR', data?, message? }` cuando aplique.
+
+Endpoints principales:
+
+- Autenticación
+  - processLogin(email, password) -> { status, token }
+  - checkAuth(token) -> { email, name } | null
+  - logoutUser(token) -> void
+  - Notas:
+    - Token en `CacheService.getUserCache()` con TTL 6h
+    - Rate limiting por IP/email (pendiente)
+
+- Catálogos y datos
+  - obtenerTasaBCV() -> number
+  - obtenerBancos() -> array
+  - cargarVendedoresHtml(isAdmin, userEmail) -> html string
+  - cargarClientesOptions(codVendedor) -> html string
+  - obtenerFacturasData(codVendedor, codCliente) -> array
+  - obtenerRegistrosRecientes(scopeKey, vendedorKey, page) -> array
+
+- Cobranzas
+  - submitData(data) -> { id, ... } (append en ‘Respuestas’, logs en ‘Auditoria’)
+  - deleteRecord(rowIndex) -> { status } (verificación de ownership, archivo en ‘Registros Eliminados’)
+
+- Mantenimiento
+  - enableMaintenance({ mode, message, allowAdmins, until }) -> status
+  - disableMaintenance() -> status
+  - getMaintenanceStatus() -> status
+  - assertOperationAllowed(email, { forLogin?, forWrite? }) -> void | error
+
+Errores:
+- Mensajes para UI amigables, logs técnicos via `Logger.error`
+- En mantenimiento: bloquear login y/o escritura según modo

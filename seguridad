@@ -1,0 +1,26 @@
+# Seguridad y cumplimiento
+
+Autenticación:
+- Login con hash HMAC-SHA256 (clave en Script Properties, no hardcodeada)
+- Tokens de sesión en `CacheService.getUserCache()` con TTL 6h
+- Logout elimina token del cache
+- Preparar salting por usuario (columna Salt en ‘Usuarios’)
+
+Autorización:
+- Validar correos contra ‘Vendedores’/‘Usuarios’
+- Modo mantenimiento: bloquear login y escritura según modo; bypass para admins configurados
+
+Secretos y configuración:
+- `PropertiesService.getScriptProperties()` para API_URL, API_KEY, API_USER, API_EMPRESA, claves HMAC, ADMIN_EMAILS
+- Nunca commitear secretos
+
+Rate limiting:
+- CacheService para contar intentos fallidos por email/IP, bloquear tras umbral y TTL de bloqueo (p.ej. 5 intentos/15min)
+
+Protección de datos:
+- Evitar almacenar datos sensibles en “sombra” salvo necesidad; considerar ofuscación
+- Logs sin PII innecesaria
+
+Cumplimiento:
+- Auditoría de cambios clave (mantenimiento, accesos admin, eliminaciones)
+- Retención y depuración programada donde aplique

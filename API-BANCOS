@@ -1,0 +1,393 @@
+# Hoja de ruta: Integración API Banco de Venezuela (BDV) en Conciliapp (con hardening de ciberseguridad)
+
+Objetivo
+- Integrar la consulta de movimientos del Banco de Venezuela (BDV) al sistema, siguiendo mejores prácticas (SOLID), Apps Script moderno, asincronía, logging, manejo de errores, y una UX clara.
+- Separar la lógica del API en un archivo servidor dedicado e integrarlo con `codigo.js` (servidor) e `index.html` (cliente).
+- Incluir mejores prácticas de ciberseguridad para mitigar fraude, inyección de código, y manipulación mediante herramientas de desarrollo del navegador; reforzar validaciones del lado del servidor y del lado del cliente.
+
+Contenido
+- Arquitectura propuesta
+- Seguridad y configuración
+- Ciberseguridad y hardening (cliente y servidor)
+- Manejo de errores y logging
+- Flujo funcional y endpoints a exponer
+- Diseño UX en cliente
+- Plan de implementación por fases
+- Pruebas y validación (incluye pruebas de seguridad)
+- Mantenimiento y monitoreo
+- Snippets de integración
+
+---
+
+## 1) Arquitectura propuesta
+
+Separación por responsabilidades (SRP)
+- BancoVenezuelaApi.js (nuevo)
+  - `BancoVenezuelaApi`: cliente HTTP hacia BDV (POST, headers, parseo).
+  - `BdvApiError`: error con metadatos (code, httpStatus, context).
+  - `BancoVenezuelaService`: orquestación (validaciones negocio, normalización, paginado, auditoría, persistencia opcional).
+- codigo.js (existente)
+  - Controladores Apps Script, funciones públicas invocables por `google.script.run`.
+  - Integración con `BancoVenezuelaService`.
+  - `SheetManager`: añadir hoja “Movimientos BDV” (opcional, si se persiste).
+- index.html (existente)
+  - Tarjeta de UI para consultar BDV: cuenta, fecha inicio/fin (dd/MM/yyyy), moneda (VES), “Buscar” y “Cargar más”.
+  - Reutiliza `UiManager`/`DataManager` añadiendo métodos BDV, validaciones cliente y estados de carga.
+
+---
+
+## 2) Seguridad y configuración
+
+Script Properties (nunca expuestas al cliente)
+- BDV_API_KEY: API key QA del BDV.
+- BDV_BASE_URL: https://bdvconciliacionqa.banvenez.com:444/apis/bdv/consulta/movimientos/v2
+- BDV_CUENTA_DEFAULT: cuenta por defecto (opcional).
+
+Otras propiedades
+- Listas blancas: `FORMA_PAGO_ALLOWLIST`, `BANCOS_EMISOR_ALLOWLIST`, `BANCOS_RECEPTOR_ALLOWLIST`.
+- Umbrales y rate limits (p. ej. `BDV_MAX_REQUESTS_PER_MINUTE`).
+
+Notas
+- Validar formato de fechas (dd/MM/yyyy) y cuenta (20 dígitos) en servidor.
+- Sanitizar todo input de cliente; no confiar en cálculos del cliente.
+- Usar `validateHttpsCertificates: true` (Apps Script por defecto).
+- No exponer secretos en errores/UX.
+
+---
+
+## 3) Ciberseguridad y hardening
+
+3.1. Amenazas objetivo
+- XSS: inyección en DOM por uso de `innerHTML` con datos externos (API/hojas).
+- CSRF/Clickjacking: intento de uso malicioso en iframes de terceros.
+- Manipulación del cliente via DevTools: alterar valores antes de enviar.
+- Abuso de API BDV: rangos de fechas no permitidos, paginación indebida, fuerza bruta.
+- Exfiltración de secretos: impresión accidental de API keys en logs/errores.
+
+3.2. Defensa del lado del servidor (primaria, obligatoria)
+- Validaciones estrictas:
+  - Cuenta: `^\d{20}$`.
+  - Fechas: dd/MM/yyyy; cuando sea “hoy”, `fechaIni == fechaFin == hoy`. En rangos históricos, `fechaFin <= ayer`.
+  - tipoMoneda: lista blanca `['VES']`.
+  - Paginación: `nroMovimiento` string numérica (si provista).
+  - En envíos de cobranzas: listas blancas para `formaPago`, bancos emisor/receptor; longitudes y tipos; evitar confiar en `monto` derivado de cliente; verificar vendedor-cliente autorizado por usuario (según mapeo en hoja).
+- Seguridad transaccional:
+  - Idempotencia en operaciones sensibles (clave `nroReferencia` ya validada contra duplicados).
+  - Reglas de negocio anti-fraude (monto máximo por operación/día por usuario); disparar alertas si se supera.
+- Rate limiting y anti-abuso:
+  - CacheService/PropertiesService para conteo por usuario/IP (si disponible) y por ventana de tiempo.
+  - Circuit breaker temporal si BDV devuelve errores repetidos (backoff exponencial).
+- Logging con redacción:
+  - Ofuscar cuentas y referencias en auditoría: “cuenta 0102**********3374”, “ref ****3958”.
+  - Nunca loggear API keys ni respuestas completas en error; limitar “preview” a 200 caracteres.
+- Encabezados/medidas de clickjacking:
+  - `doGet(...).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY)`.
+
+3.3. Defensa del lado del cliente (defensa en profundidad)
+- Content Security Policy (CSP) con nonce:
+  - Solo permitir scripts con `nonce`.
+  - Prohibir `eval`, `inline-event-handlers`, y `data:` para scripts.
+  - Permisos mínimos para fuentes/estilos (Google Fonts).
+- Evitar `innerHTML` para insertar datos:
+  - Crear nodos con `createElement` + `textContent`.
+  - Si se debe usar HTML (tooltips), sanitizar con DOMPurify (incrustado con SRI o empaquetado local).
+- Aislar datos variables:
+  - No interpolar datos del servidor dentro de cadenas HTML sin sanitizar.
+  - Retornar estructuras (arrays/objetos) y construir DOM seguro en cliente.
+- Protección básica ante DevTools:
+  - “Tamper-evident UX”: banner debug solo en modo dev.
+  - Nunca confiar en flags/validaciones cliente: el servidor revalida todo.
+- Almacenamiento local:
+  - No guardar datos sensibles en `localStorage/sessionStorage`.
+  - Limitar TTL y limpiar cachés en logout.
+
+3.4. Ejemplo CSP con nonce
+- En `doGet`: generar nonce e inyectarlo a la plantilla.
+- Meta CSP estricta, compatible con Google Apps Script y Google Fonts.
+
+```js
+// En codigo.js (doGet)
+function doGet(e) {
+  const params = (e && e.parameter) ? e.parameter : {};
+  const token = params.token;
+  const url = getWebAppUrl();
+  const nonce = Utilities.getUuid();
+
+  const user = token ? checkAuth(token) : null;
+  const page = String((params.view || params.page || params.template || '')).toLowerCase();
+  const templateName = page === 'report' ? 'Report' : 'Index';
+
+  const template = HtmlService.createTemplateFromFile(templateName);
+  template.user = user;
+  template.url = url;
+  template.token = token || '';
+  template.nonce = nonce;
+
+  const out = template.evaluate()
+    .setTitle(templateName === 'Report' ? 'Reporte de Registros' : 'Registro de Cobranzas')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY);
+
+  return out;
+}
+```
+
+```html
+<!-- En index.html (head) -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self' https://ssl.gstatic.com https://*.googleusercontent.com;
+  frame-ancestors 'none';
+  script-src 'self' 'nonce-<?!= nonce ?>' https://www.gstatic.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data:;
+  connect-src 'self';
+  base-uri 'self';
+  form-action 'self';
+">
+<!-- Nota: 'unsafe-inline' en style es necesario por estilos incrustados; scripts usan nonce. -->
+```
+
+3.5. Reemplazar `innerHTML` por DOM seguro (ejemplos)
+- Opciones en selects:
+
+```js
+// Antes: select.innerHTML = optionsHtml;
+// Después:
+function populateOptions(select, items) {
+  select.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  items.forEach(({ value, label }) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    frag.appendChild(opt);
+  });
+  select.appendChild(frag);
+}
+```
+
+- Filas de tabla:
+
+```js
+function appendRecordRow(tbody, record) {
+  const tr = document.createElement('tr');
+
+  const tdRef = document.createElement('td');
+  tdRef.className = 'col-ref';
+  tdRef.setAttribute('data-label', 'Referencia');
+  tdRef.textContent = record.referencia || '';
+  tr.appendChild(tdRef);
+
+  // ... repetir para el resto de celdas, siempre usando textContent
+  tbody.appendChild(tr);
+}
+```
+
+- Si necesitas tooltips con HTML, sanitiza:
+
+```html
+<script nonce="<?!= nonce ?>" src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"
+  integrity="sha384-+oFIOeP9ImBfwwh3gNw8Hc1tS0w9GqFMGk1gt5eNM2Y2G3nQblX66qz2uB7h9IfG" crossorigin="anonymous"></script>
+```
+
+```js
+const safe = DOMPurify.sanitize(unsafeHtml, { ALLOWED_TAGS: ['b','i','br','span'], ALLOWED_ATTR: [] });
+tooltip.innerHTML = safe;
+```
+
+3.6. Revalidaciones servidor para evitar manipulación cliente
+Checklist servidor (Cobranza y BDV):
+- Verificar que el usuario tiene permiso sobre el vendedor seleccionado (mapeo hoja).
+- `formaPago`, `bancoEmisor`, `bancoReceptor`: validar contra listas blancas de Script Properties/Hoja.
+- `nroReferencia`: longitud 4–20, alfanumérico básico, no duplicado.
+- `montoPagado`: número > 0; aplicar límites por usuario/día.
+- `fechaTransferenciaPago`: no futura; formato y rango razonable.
+- BDV:
+  - `cuenta`: 20 dígitos.
+  - `fechaIni/fechaFin`: dd/MM/yyyy; reglas “hoy” vs “rango histórico”.
+  - `nroMovimiento`: string numérica o vacío.
+- Ignorar/rehacer en servidor cualquier cálculo de montos que provenga del cliente.
+
+3.7. Anti-automatización y abuso
+- Límite de frecuencia por usuario para BDV (p. ej. 10/min).
+- Backoff si BDV responde error, con mensaje UX claro.
+- Capturar métricas: latencia, status codes, ratio de errores.
+
+---
+
+## 4) Manejo de errores y logging
+
+Errores tipificados
+- `BdvApiError` con `code`, `httpStatus`, `context` no sensible.
+- Mapear respuestas BDV: `code === "1000"` = éxito; resto = error legible.
+
+Logging/Auditoría
+- `Logger` escribe a hoja Auditoria (INFO/ERROR, usuario, detalle).
+- Redacción:
+  - Cuentas: 0102**********3374
+  - Referencias: ****43958
+- Guardar correlación por request (`Utilities.getUuid()`).
+- No imprimir payloads completos ni API keys.
+
+---
+
+## 5) Flujo funcional y endpoints
+
+Servidor (codigo.js)
+- `consultarMovimientosBDV(token, params)`
+  - Valida params; aplica reglas de fechas; llama `BancoVenezuelaService.consultarMovimientos`.
+  - Devuelve `{ data, nextPageToken, pageSize, status }`.
+
+Cliente (index.html)
+- Nueva tarjeta “Movimientos BDV”:
+  - Inputs: cuenta, fechaIni, fechaFin (dd/MM/yyyy), `tipoMoneda=VES`.
+  - Botones: “Buscar”, “Cargar más” (usa `nextPageToken` → `nroMovimiento`).
+  - Tabla responsive y toasts de estado/error.
+
+Paginación
+- Extraer `nroMov` del último item como `nextPageToken`.
+- Cliente lo reenvía en la siguiente llamada si el usuario elige “Cargar más”.
+
+---
+
+## 6) Diseño UX en cliente
+
+- Validaciones preventivas (cliente) con mensajes claros; servidor revalida todo.
+- Estados: “Consultando BDV…”, “0 resultados”, conteos y paginado visible.
+- Exportaciones: CSV client-side; PDF reutilizando `ReportService` (opcional).
+- Accesibilidad: `aria-live` para notificaciones y spinner.
+
+---
+
+## 7) Plan de implementación por fases
+
+Fase 1 — Infraestructura/seguridad
+- [ ] Crear BancoVenezuelaApi.js con `BdvApiError`, `BancoVenezuelaApi`, `BancoVenezuelaService`.
+- [ ] Añadir Script Properties: BDV_API_KEY, BDV_BASE_URL, BDV_CUENTA_DEFAULT, listas blancas.
+- [ ] En `doGet`, generar `nonce`, aplicar `XFrameOptionsMode.DENY` y meta CSP.
+- [ ] Revisar `Logger` para redacción de datos sensibles.
+
+Fase 2 — Endpoint y validaciones servidor
+- [ ] `consultarMovimientosBDV(token, params)` con withAuth y validaciones.
+- [ ] Rate limiting (CacheService) y manejo de backoff.
+- [ ] Pruebas con data de ejemplo BDV y paginación.
+
+Fase 3 — UI cliente segura
+- [ ] Nueva tarjeta BDV en `index.html`.
+- [ ] Reemplazar usos de `innerHTML` por creación de nodos; añadir DOMPurify si se requiere HTML.
+- [ ] Añadir `nonce` a `<script>` y conservar estilos con `unsafe-inline` en CSS.
+
+Fase 4 — Persistencia/reportes (opcional)
+- [ ] Hoja “Movimientos BDV” para histórico.
+- [ ] Exportar PDF/CSV.
+
+Fase 5 — Hardening y monitoreo
+- [ ] Telemetría de latencia y errores BDV.
+- [ ] Alertas en Auditoria ante patrones anómalos (varios rechazos, montos inusuales).
+- [ ] Documentación y runbooks.
+
+---
+
+## 8) Pruebas y validación
+
+Funcionales
+- “Hoy”: `fechaIni==fechaFin==hoy`; paginación con `nroMovimiento`.
+- Rango histórico: `fechaFin<=ayer`; múltiples páginas.
+
+Seguridad
+- XSS:
+  - Intentar inyectar HTML/JS en nombres de clientes, observaciones y referencias; verificar sanitización y CSP bloqueando ejecución.
+- Tampering cliente:
+  - Manipular valores en DevTools antes de `google.script.run`; servidor debe rechazar datos inválidos/listas blancas.
+- Rate limiting:
+  - Más de N consultas/min por usuario debe bloquear temporalmente.
+- Clickjacking:
+  - Verificar que no se pueda embeber en iframe externo.
+- Filtración:
+  - Revisar que logs/auditoría no contengan secretos ni datos completos sensibles.
+
+Performance/cuotas Apps Script
+- `UrlFetchApp` cuotas y tiempos; fallback y mensajes de cortesía al usuario.
+
+---
+
+## 9) Mantenimiento y monitoreo
+
+- Rotación de API Key BDV (propiedades) y separación QA/PROD.
+- Revisiones mensuales de Auditoria (errores frecuentes, latencia).
+- Revisión CSP cuando se agreguen nuevas dependencias (fuentes/CDNs).
+- Backups de hoja “Movimientos BDV” si se persiste.
+
+---
+
+## 10) Snippets de integración
+
+10.1) Hoja en `SheetManager.SHEET_CONFIG` (opcional)
+```js
+'Movimientos BDV': {
+  headers: [
+    'Fecha Consulta', 'Usuario', 'Cuenta (ofuscada)', 'Tipo Moneda',
+    'Fecha', 'Hora', 'Movimiento', 'Referencia (ofuscada)', 'Descripción',
+    'Importe', 'Saldo', 'Observación', 'nroMov', 'CorrelationId'
+  ]
+}
+```
+
+10.2) Endpoint servidor
+```js
+function consultarMovimientosBDV(token, params) {
+  return withAuth(token, (user) => {
+    const svc = new BancoVenezuelaService();
+    // Rate limiting simple (ejemplo)
+    const cache = CacheService.getUserCache();
+    const k = 'bdv:cnt:' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMddHHmm');
+    const cnt = Number(cache.get(k) || '0');
+    if (cnt > 10) { // 10/min por usuario
+      throw new Error('Límite de consultas por minuto alcanzado. Intente nuevamente en 60 segundos.');
+    }
+    cache.put(k, String(cnt + 1), 60);
+    return svc.consultarMovimientos(params, user.email);
+  });
+}
+```
+
+10.3) Ofuscación segura en logging
+```js
+function obfuscateAccount(acc) { return acc ? acc.slice(0,4) + '**********' + acc.slice(-4) : ''; }
+function obfuscateRef(ref) { return ref ? '****' + String(ref).slice(-5) : ''; }
+```
+
+10.4) Uso de nonce en scripts
+```html
+<script nonce="<?!= nonce ?>">
+  // JS cliente aquí. Evitar inline event handlers en etiquetas HTML.
+</script>
+```
+
+10.5) Construcción segura de DOM (selects)
+```js
+function setVendedores(items) {
+  const select = document.getElementById('vendedor');
+  select.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.disabled = true;
+  ph.selected = true;
+  ph.textContent = 'Seleccione un vendedor';
+  select.appendChild(ph);
+  populateOptions(select, items.map(v => ({ value: v.codigo, label: v.nombre })));
+}
+```
+
+---
+
+## 11) Decisiones clave (resumen)
+
+- Lógica BDV en archivo dedicado (SRP, DIP).
+- Validaciones servidor exhaustivas; cliente como ayuda, no autoridad.
+- CSP con nonce y reemplazo de `innerHTML` por DOM seguro; DOMPurify si se necesita HTML.
+- Clickjacking denegado; rate limiting y circuit breaker.
+- Logging con redacción y correlación; auditoría exhaustiva.
+
+Fin del documento.

@@ -1,0 +1,37 @@
+# Estrategia de Caché
+
+Objetivos:
+- Reducir latencia y lecturas a Sheets/APIs
+- Evitar picos (stampede) con locks
+- Resiliencia: servir datos stale si el refresh falla
+- TTL por tipo de dato y prewarm diario
+
+Capa propuesta: `CacheUtil` (Apps Script)
+- CacheService (ScriptCache) como primario
+- PropertiesService como “sombra” persistente
+- SWR: `getWithSWR({ key, ttlSeconds, staleTtlSeconds, rebuildFn, ... })`
+- LockService para serializar refrescos
+- Invalidación por prefijo mediante versionado de claves (vN) y limpieza de sombras
+- Prewarm con trigger 6:00am (BCV, Bancos, Vendedores admin; opcional clientes top)
+
+Patrones de clave y TTL (recomendado):
+- script:vendedores:admin — TTL 6h, stale 12h
+- script:vendedores:{email} — TTL 6h, stale 12h
+- script:clientes:{codVendedor} — TTL 6h, stale 12h
+- script:facturas:{vendedor}:{cliente} — TTL 60min, stale 2h
+- script:bcv — TTL 60min, stale 3h
+- script:bancos — TTL 72h, stale 7d
+- script:registros:{scope}:{vendedor|all}:page={n} — TTL 3min, stale 15min
+
+Límites y segmentación:
+- ~100KB/entrada en CacheService
+- Sharding por partes y recomposición cuando exceda
+- HTML en cliente para reducir tamaño si aplica
+
+Observabilidad:
+- Métricas: cache_hit, cache_miss, rebuild_ok, rebuild_error
+- Ajuste de TTL por patrón de uso
+
+Estado actual vs. objetivo:
+- Actual: `CacheManager` (PropertiesService TTL) en datos; `CacheService.getUserCache()` para sesiones.
+- Objetivo: migrar a `CacheUtil` por fases (BCV/Bancos -> Vendedores -> Clientes/Facturas -> Registros recientes), mantener sombra 1–2 semanas, luego retirar CacheManager.
