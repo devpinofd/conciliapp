@@ -1,0 +1,134 @@
+Ahora voy a analizar el código fuente de tu repositorio conciliapp para entender su estructura y funcionalidad.Basándome en el análisis del repositorio **conciliapp**, puedo ver que es una aplicación de conciliación bancaria desarrollada con Google Apps Script. He identificado los siguientes componentes principales:
+
+## Arquitectura Actual
+- **Frontend**: HTML con JavaScript embebido (index.html, auth.html, dashboard.html)
+- **Backend**: Google Apps Script (codigo.js como archivo principal)
+- **Autenticación**: Sistema de login personalizado (auth.js, auth.html)
+- **Mantenimiento**: Scripts para gestión y testing (maintenance.js, maintenance-test.js)
+
+## Recomendaciones de Estructuras de Datos y Algoritmos
+
+### 1. **Optimización de Cache y Memoria**
+**Estructura Recomendada**: **Map/HashMap** para cache de datos bancarios
+```javascript
+// Implementar cache LRU (Least Recently Used)
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.cache = new Map();
+  }
+  
+  get(key) {
+    if (this.cache.has(key)) {
+      const value = this.cache.get(key);
+      this.cache.delete(key);
+      this.cache.set(key, value); // Mover al final
+      return value;
+    }
+    return null;
+  }
+}
+```
+
+### 2. **Procesamiento de Transacciones**
+**Algoritmo Recomendado**: **Merge Sort** para ordenamiento de transacciones grandes
+- Ventaja: O(n log n) garantizado, estable para fechas
+- Uso: Ordenar movimientos bancarios por fecha/monto
+
+**Estructura**: **Árbol B+ o Índices Hash** para búsqueda rápida
+```javascript
+// Índice por número de cuenta
+const accountIndex = new Map();
+// Índice por rango de fechas
+const dateRangeTree = new BPlusTree();
+```
+
+### 3. **Conciliación Automática**
+**Algoritmo**: **Programación Dinámica** para matching de transacciones
+```javascript
+function findBestMatch(bankTransaction, systemTransactions) {
+  // Matriz de similaridad usando distancia de Levenshtein
+  // para nombres/conceptos + diferencia de montos
+  const dp = Array(systemTransactions.length + 1)
+    .fill().map(() => Array(3).fill(0)); // [similarity, amount_diff, total_score]
+  
+  // Algoritmo de matching óptimo
+}
+```
+
+### 4. **Manejo de Grandes Volúmenes**
+**Estructura**: **Trie** para autocompletado de conceptos/beneficiarios
+```javascript
+class ConceptTrie {
+  constructor() {
+    this.root = {};
+  }
+  
+  insert(concept) {
+    let node = this.root;
+    for (let char of concept.toLowerCase()) {
+      if (!node[char]) node[char] = {};
+      node = node[char];
+    }
+    node.isEnd = true;
+  }
+  
+  autocomplete(prefix) {
+    // Retorna sugerencias basadas en patrones históricos
+  }
+}
+```
+
+### 5. **Detección de Anomalías**
+**Algoritmo**: **Sliding Window** para detectar patrones inusuales
+```javascript
+function detectAnomalies(transactions) {
+  const window = [];
+  const anomalies = [];
+  const WINDOW_SIZE = 100;
+  
+  for (let transaction of transactions) {
+    if (window.length >= WINDOW_SIZE) {
+      // Calcular desviación estándar y detectar outliers
+      const stats = calculateStats(window);
+      if (isAnomaly(transaction, stats)) {
+        anomalies.push(transaction);
+      }
+      window.shift();
+    }
+    window.push(transaction);
+  }
+  return anomalies;
+}
+```
+
+### 6. **Optimización de Consultas**
+**Estructura**: **Segment Tree** para consultas de rangos de fechas/montos
+- Consultas en O(log n) para obtener totales por períodos
+- Útil para reportes y dashboards
+
+### 7. **Gestión de Estados**
+**Patrón**: **State Machine** para el flujo de conciliación
+```javascript
+const ConciliationStates = {
+  PENDING: 'pending',
+  MATCHED: 'matched',
+  DISCREPANCY: 'discrepancy',
+  APPROVED: 'approved'
+};
+
+class ConciliationStateMachine {
+  transition(currentState, action) {
+    // Lógica de transiciones válidas
+  }
+}
+```
+
+## Mejoras Específicas Recomendadas
+
+1. **Particionamiento de Datos**: Implementar particionamiento por fecha para mejorar performance
+2. **Índices Compuestos**: Crear índices por (fecha + cuenta + monto) para búsquedas complejas
+3. **Queue System**: Implementar cola de prioridades para procesamiento asíncrono de archivos grandes
+4. **Compression**: Usar algoritmos de compresión para almacenar datos históricos
+
+Estas mejoras optimizarán significativamente el rendimiento de tu aplicación de conciliación, especialmente al manejar grandes volúmenes de transacciones bancarias.
